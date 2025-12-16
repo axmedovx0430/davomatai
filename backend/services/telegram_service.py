@@ -1,0 +1,503 @@
+"""
+Telegram Bot Service - User-focused features
+"""
+from telegram import Bot, Update
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram import Bot, Update, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+from config import settings
+import logging
+from typing import Optional
+from datetime import datetime, timedelta
+from sqlalchemy.orm import Session
+from database import SessionLocal
+from models.user import User
+from models.attendance import Attendance
+from models.schedule import Schedule
+from sqlalchemy import func, and_
+
+logger = logging.getLogger(__name__)
+
+
+class TelegramService:
+    def __init__(self):
+        self.bot: Optional[Bot] = None
+        self.application: Optional[Application] = None
+        self.user_states = {}  # Track user registration states
+        self._initialize()
+    
+    def _initialize(self):
+        """Initialize Telegram bot"""
+        try:
+            self.application = Application.builder().token(settings.TELEGRAM_BOT_TOKEN).build()
+            self.bot = self.application.bot
+            
+            # Register command handlers
+            self.application.add_handler(CommandHandler("start", self.cmd_start))
+            self.application.add_handler(CommandHandler("mystats", self.cmd_mystats))
+            self.application.add_handler(CommandHandler("today", self.cmd_today))
+            self.application.add_handler(CommandHandler("week", self.cmd_week))
+            self.application.add_handler(CommandHandler("profile", self.cmd_profile))
+            self.application.add_handler(CommandHandler("schedule", self.cmd_schedule))
+            self.application.add_handler(CommandHandler("notify", self.cmd_notify))
+            self.application.add_handler(CommandHandler("help", self.cmd_help))
+            
+            # Message handler for registration
+            self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message))
+            
+            logger.info("Telegram bot initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize Telegram bot: {e}")
+    
+    async def send_message(self, chat_id: int, text: str, parse_mode: str = "HTML"):
+        """Send message to specific chat"""
+        try:
+            await self.bot.send_message(chat_id=chat_id, text=text, parse_mode=parse_mode)
+        except Exception as e:
+            logger.error(f"Failed to send Telegram message: {e}")
+    
+    async def send_to_admins(self, text: str, parse_mode: str = "HTML"):
+        """Send message to all admin chats"""
+        for chat_id in settings.admin_chat_ids:
+            await self.send_message(chat_id, text, parse_mode)
+    
+    def get_user_by_chat_id(self, chat_id: str) -> Optional[User]:
+        """Get user by telegram chat ID"""
+        db = SessionLocal()
+        try:
+            return db.query(User).filter(User.telegram_chat_id == str(chat_id)).first()
+        finally:
+            db.close()
+    
+    def get_user_by_employee_id(self, employee_id: str) -> Optional[User]:
+        """Get user by employee ID"""
+        db = SessionLocal()
+        try:
+            return db.query(User).filter(User.employee_id == employee_id).first()
+        finally:
+            db.close()
+    
+    async def cmd_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle /start command - Registration"""
+        chat_id = str(update.effective_chat.id)
+        user = self.get_user_by_chat_id(chat_id)
+        
+        if user:
+            # Already registered
+            message = (
+                f"👋 Xush kelibsiz, <b>{user.full_name}</b>!\\n\\n"
+                f"Siz allaqachon ro'yxatdan o'tgansiz.\\n\\n"
+                f"<b>Mavjud buyruqlar:</b>\\n"
+                f"/mystats - Mening statistikam\\n"
+                f"/today - Bugungi davomatim\\n"
+                f"/week - Haftalik hisobot\\n"
+                f"/profile - Profilim\\n"
+                f"/schedule - Bugungi jadval\\n"
+                f"/notify - Xabarlar sozlamasi\\n"
+                f"/help - Yordam"
+            )
+        else:
+            # Start registration
+            self.user_states[chat_id] = "awaiting_employee_id"
+            message = (
+                "👋 <b>Xush kelibsiz!</b>\\n\\n"
+                "ESP32-CAM davomat tizimi botiga xush kelibsiz.\\n\\n"
+                "Ro'yxatdan o'tish uchun <b>Employee ID</b> ingizni yuboring.\\n"
+                "Masalan: <code>EMP001</code>"
+            )
+        
+        
+        # Create Web App button
+        webapp_button = InlineKeyboardButton(
+            text="📱 Ilovani ochish", 
+            web_app=WebAppInfo(url=f"{settings.FRONTEND_URL}/mobile")
+        )
+        keyboard = InlineKeyboardMarkup([[webapp_button]])
+        
+        await update.message.reply_text(message, parse_mode="HTML", reply_markup=keyboard)
+    
+    async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle text messages (for registration)"""
+        chat_id = str(update.effective_chat.id)
+        text = update.message.text.strip()
+        
+        if chat_id in self.user_states and self.user_states[chat_id] == "awaiting_employee_id":
+            # Process employee ID
+            user = self.get_user_by_employee_id(text)
+            
+            if user:
+                # Register user
+                db = SessionLocal()
+                try:
+                    user.telegram_chat_id = chat_id
+                    user.telegram_username = update.effective_user.username
+                    user.telegram_notifications = True
+                    user.telegram_registered_at = datetime.now()
+                    db.commit()
+                    
+                    del self.user_states[chat_id]
+                    
+                    message = (
+                        f"✅ <b>Muvaffaqiyatli ro'yxatdan o'tdingiz!</b>\\n\\n"
+                        f"👤 Ism: <b>{user.full_name}</b>\\n"
+                        f"🆔 ID: <code>{user.employee_id}</code>\\n\\n"
+                        f"<b>Mavjud buyruqlar:</b>\\n"
+                        f"/mystats - Mening statistikam\\n"
+                        f"/today - Bugungi davomatim\\n"
+                        f"/week - Haftalik hisobot\\n"
+                        f"/profile - Profilim\\n"
+                        f"/schedule - Bugungi jadval\\n"
+                        f"/help - Yordam"
+                    )
+                except Exception as e:
+                    logger.error(f"Registration error: {e}")
+                    message = "❌ Xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring."
+                finally:
+                    db.close()
+            else:
+                message = (
+                    f"❌ <b>Foydalanuvchi topilmadi!</b>\\n\\n"
+                    f"Employee ID: <code>{text}</code> tizimda mavjud emas.\\n\\n"
+                    f"Iltimos, to'g'ri ID ni kiriting yoki admin bilan bog'laning."
+                )
+            
+            
+            await update.message.reply_text(message, parse_mode="HTML")
+        else:
+            # Fallback for unknown messages
+            user = self.get_user_by_chat_id(chat_id)
+            if user:
+                await update.message.reply_text(
+                    "Tushunarsiz buyruq. Iltimos, /help buyrug'idan foydalaning.",
+                    parse_mode="HTML"
+                )
+            else:
+                await update.message.reply_text(
+                    "Iltimos, ro'yxatdan o'tish uchun /start buyrug'ini bosing.",
+                    parse_mode="HTML"
+                )
+    
+    async def cmd_mystats(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle /mystats command - Personal statistics"""
+        chat_id = str(update.effective_chat.id)
+        user = self.get_user_by_chat_id(chat_id)
+        
+        if not user:
+            await update.message.reply_text(
+                "❌ Siz ro'yxatdan o'tmagansiz. /start buyrug'ini bosing.",
+                parse_mode="HTML"
+            )
+            return
+        
+        db = SessionLocal()
+        try:
+            # Get current month stats
+            now = datetime.now()
+            month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            
+            total_attendance = db.query(Attendance).filter(
+                and_(
+                    Attendance.user_id == user.id,
+                    Attendance.check_in_time >= month_start
+                )
+            ).count()
+            
+            present_count = db.query(Attendance).filter(
+                and_(
+                    Attendance.user_id == user.id,
+                    Attendance.check_in_time >= month_start,
+                    Attendance.status == "present"
+                )
+            ).count()
+            
+            late_count = db.query(Attendance).filter(
+                and_(
+                    Attendance.user_id == user.id,
+                    Attendance.check_in_time >= month_start,
+                    Attendance.status == "late"
+                )
+            ).count()
+            
+            # Get all-time stats
+            total_all_time = db.query(Attendance).filter(Attendance.user_id == user.id).count()
+            
+            attendance_rate = (present_count / total_attendance * 100) if total_attendance > 0 else 0
+            
+            message = (
+                f"📊 <b>Sizning statistikangiz</b>\\n\\n"
+                f"📅 <b>{now.strftime('%B %Y')}</b>\\n"
+                f"✅ Kelgan: {present_count}\\n"
+                f"⏰ Kechikkan: {late_count}\\n"
+                f"📈 Davomat: {attendance_rate:.1f}%\\n\\n"
+                f"<b>Umumiy ({now.year}-yil):</b>\\n"
+                f"📊 Jami: {total_all_time} ta davomat"
+            )
+            
+        except Exception as e:
+            logger.error(f"Stats error: {e}")
+            message = "❌ Statistikani yuklashda xatolik yuz berdi."
+        finally:
+            db.close()
+        
+        await update.message.reply_text(message, parse_mode="HTML")
+    
+    async def cmd_today(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle /today command - Today's attendance"""
+        chat_id = str(update.effective_chat.id)
+        user = self.get_user_by_chat_id(chat_id)
+        
+        if not user:
+            await update.message.reply_text(
+                "❌ Siz ro'yxatdan o'tmagansiz. /start buyrug'ini bosing.",
+                parse_mode="HTML"
+            )
+            return
+        
+        db = SessionLocal()
+        try:
+            today = datetime.now().date()
+            today_start = datetime.combine(today, datetime.min.time())
+            today_end = datetime.combine(today, datetime.max.time())
+            
+            attendances = db.query(Attendance).filter(
+                and_(
+                    Attendance.user_id == user.id,
+                    Attendance.check_in_time >= today_start,
+                    Attendance.check_in_time <= today_end
+                )
+            ).order_by(Attendance.check_in_time).all()
+            
+            if attendances:
+                message = f"📅 <b>Bugungi davomat ({today.strftime('%d %B')})</b>\\n\\n"
+                
+                for i, att in enumerate(attendances, 1):
+                    status_emoji = "✅" if att.status == "present" else "⏰"
+                    time_str = att.check_in_time.strftime("%H:%M")
+                    schedule_name = att.schedule.name if att.schedule else "Noma'lum"
+                    
+                    message += f"{i}. {status_emoji} {time_str} - {schedule_name}\\n"
+                
+                present = sum(1 for a in attendances if a.status == "present")
+                total = len(attendances)
+                message += f"\\nBugun: {present}/{total} ({present/total*100:.0f}%)"
+            else:
+                message = f"📅 <b>Bugungi davomat ({today.strftime('%d %B')})</b>\\n\\nHali davomat yo'q."
+            
+        except Exception as e:
+            logger.error(f"Today error: {e}")
+            message = "❌ Ma'lumotlarni yuklashda xatolik yuz berdi."
+        finally:
+            db.close()
+        
+        await update.message.reply_text(message, parse_mode="HTML")
+    
+    async def cmd_week(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle /week command - Weekly report"""
+        chat_id = str(update.effective_chat.id)
+        user = self.get_user_by_chat_id(chat_id)
+        
+        if not user:
+            await update.message.reply_text(
+                "❌ Siz ro'yxatdan o'tmagansiz. /start buyrug'ini bosing.",
+                parse_mode="HTML"
+            )
+            return
+        
+        await update.message.reply_text(
+            "📅 Haftalik hisobot funksiyasi tez orada qo'shiladi...",
+            parse_mode="HTML"
+        )
+    
+    async def cmd_profile(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle /profile command - User profile"""
+        chat_id = str(update.effective_chat.id)
+        user = self.get_user_by_chat_id(chat_id)
+        
+        if not user:
+            await update.message.reply_text(
+                "❌ Siz ro'yxatdan o'tmagansiz. /start buyrug'ini bosing.",
+                parse_mode="HTML"
+            )
+            return
+        
+        db = SessionLocal()
+        try:
+            total_attendance = db.query(Attendance).filter(Attendance.user_id == user.id).count()
+            present_count = db.query(Attendance).filter(
+                and_(Attendance.user_id == user.id, Attendance.status == "present")
+            ).count()
+            late_count = db.query(Attendance).filter(
+                and_(Attendance.user_id == user.id, Attendance.status == "late")
+            ).count()
+            
+            attendance_rate = (present_count / total_attendance * 100) if total_attendance > 0 else 0
+            
+            groups_str = ", ".join([g.name for g in user.groups]) if user.groups else "Yoq"
+            
+            message = (
+                f"👤 <b>Profil</b>\\n\\n"
+                f"<b>Ism:</b> {user.full_name}\\n"
+                f"🆔 <b>ID:</b> <code>{user.employee_id}</code>\\n"
+                f"📱 <b>Telefon:</b> {user.phone or 'Yoq'}\\n"
+                f"📧 <b>Email:</b> {user.email or 'Yoq'}\\n"
+                f"👥 <b>Guruh:</b> {groups_str}\\n\\n"
+                f"📊 <b>Umumiy statistika:</b>\\n"
+                f"Davomat: {attendance_rate:.0f}%\\n"
+                f"Jami: {total_attendance}\\n"
+                f"✅ Kelgan: {present_count}\\n"
+                f"⏰ Kechikkan: {late_count}"
+            )
+        except Exception as e:
+            logger.error(f"Profile error: {e}")
+            message = "❌ Profilni yuklashda xatolik yuz berdi."
+        finally:
+            db.close()
+        
+        await update.message.reply_text(message, parse_mode="HTML")
+    
+    async def cmd_schedule(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle /schedule command - Today's schedule"""
+        chat_id = str(update.effective_chat.id)
+        user = self.get_user_by_chat_id(chat_id)
+        
+        if not user:
+            await update.message.reply_text(
+                "❌ Siz ro'yxatdan o'tmagansiz. /start buyrug'ini bosing.",
+                parse_mode="HTML"
+            )
+            return
+        
+        await update.message.reply_text(
+            "📅 Jadval funksiyasi tez orada qo'shiladi...",
+            parse_mode="HTML"
+        )
+    
+    async def cmd_notify(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle /notify command - Toggle notifications"""
+        chat_id = str(update.effective_chat.id)
+        user = self.get_user_by_chat_id(chat_id)
+        
+        if not user:
+            await update.message.reply_text(
+                "❌ Siz ro'yxatdan o'tmagansiz. /start buyrug'ini bosing.",
+                parse_mode="HTML"
+            )
+            return
+        
+        db = SessionLocal()
+        try:
+            user.telegram_notifications = not user.telegram_notifications
+            db.commit()
+            
+            if user.telegram_notifications:
+                message = "🔔 <b>Xabarlar yoqildi</b>\\n\\nEndi davomat xabarlari olasiz."
+            else:
+                message = "🔕 <b>Xabarlar o'chirildi</b>\\n\\nDavomat xabarlari kelmaydi."
+        except Exception as e:
+            logger.error(f"Notify toggle error: {e}")
+            message = "❌ Sozlamalarni o'zgartirishda xatolik yuz berdi."
+        finally:
+            db.close()
+        
+        await update.message.reply_text(message, parse_mode="HTML")
+    
+    async def cmd_help(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle /help command"""
+        help_message = (
+            "ℹ️ <b>Yordam</b>\\n\\n"
+            "<b>Mavjud buyruqlar:</b>\\n\\n"
+            "/start - Ro'yxatdan o'tish\\n"
+            "/mystats - Mening statistikam\\n"
+            "/today - Bugungi davomatim\\n"
+            "/week - Haftalik hisobot\\n"
+            "/profile - Profilim\\n"
+            "/schedule - Bugungi jadval\\n"
+            "/notify - Xabarlarni yoqish/o'chirish\\n"
+            "/help - Bu yordam xabari\\n\\n"
+            "Savollar uchun admin bilan bog'laning."
+        )
+        await update.message.reply_text(help_message, parse_mode="HTML")
+    
+    async def notify_attendance(self, user_name: str, employee_id: str, check_in_time: str, confidence: float, status: str):
+        """Send attendance notification to admin chats"""
+        try:
+            status_emoji = "✅" if status == "present" else "⏰"
+            status_text = "Keldi" if status == "present" else "Kechikdi"
+            
+            message = (
+                f"{status_emoji} <b>Davomat</b>\\n\\n"
+                f"👤 {user_name}\\n"
+                f"🆔 <code>{employee_id}</code>\\n"
+                f"🕐 {check_in_time}\\n"
+                f"📍 {status_text}\\n"
+                f"🎯 Ishonch: {confidence:.1f}%"
+            )
+            
+            await self.send_to_admins(message)
+            
+        except Exception as e:
+            logger.error(f"Admin notification error: {e}")
+    
+    async def notify_user_attendance(self, user_id: int, schedule_name: str, check_in_time: str, status: str, late_minutes: int = 0):
+        """Send personal attendance notification to user"""
+        db = SessionLocal()
+        try:
+            user = db.query(User).filter(User.id == user_id).first()
+            
+            if not user or not user.telegram_chat_id or not user.telegram_notifications:
+                return
+            
+            status_emoji = "✅" if status == "present" else "⏰"
+            status_text = "Keldingiz" if status == "present" else f"Kechikdingiz ({late_minutes} daqiqa)"
+            
+            # Get today's attendance count
+            today = datetime.now().date()
+            today_start = datetime.combine(today, datetime.min.time())
+            today_end = datetime.combine(today, datetime.max.time())
+            
+            today_count = db.query(Attendance).filter(
+                and_(
+                    Attendance.user_id == user_id,
+                    Attendance.check_in_time >= today_start,
+                    Attendance.check_in_time <= today_end
+                )
+            ).count()
+            
+            message = (
+                f"{status_emoji} <b>Davomat qabul qilindi!</b>\\n\\n"
+                f"👤 {user.full_name}\\n"
+                f"📚 {schedule_name}\\n"
+                f"🕐 {check_in_time}\\n"
+                f"📍 {status_text}\\n\\n"
+                f"Bugun: {today_count} ta davomat"
+            )
+            
+            await self.send_message(int(user.telegram_chat_id), message)
+            
+        except Exception as e:
+            logger.error(f"User notification error: {e}")
+        finally:
+            db.close()
+    
+    async def start_polling(self):
+        """Start bot polling (for standalone mode)"""
+        try:
+            await self.application.initialize()
+            await self.application.start()
+            await self.application.updater.start_polling()
+            logger.info("Telegram bot polling started")
+        except Exception as e:
+            logger.error(f"Failed to start bot polling: {e}")
+    
+    async def stop_polling(self):
+        """Stop bot polling"""
+        try:
+            await self.application.updater.stop()
+            await self.application.stop()
+            await self.application.shutdown()
+            logger.info("Telegram bot polling stopped")
+        except Exception as e:
+            logger.error(f"Failed to stop bot polling: {e}")
+
+
+# Global instance
+telegram_service = TelegramService()

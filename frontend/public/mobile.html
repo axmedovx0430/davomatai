@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Davomat AI</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--tg-theme-bg-color, #fff);
+            color: var(--tg-theme-text-color, #000);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .user-card {
+            background-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--tg-theme-hint-color, #999);
+        }
+
+        .history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid var(--tg-theme-secondary-bg-color, #f0f0f0);
+        }
+
+        .history-date {
+            font-size: 14px;
+        }
+
+        .history-time {
+            font-size: 12px;
+            color: var(--tg-theme-hint-color, #999);
+        }
+
+        .history-status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .status-present {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .status-late {
+            background-color: #fff3e0;
+            color: #ef6c00;
+        }
+
+        .status-absent {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+
+        .error-card {
+            background-color: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .loading {
+            text-align: center;
+            color: var(--tg-theme-hint-color, #999);
+            margin-top: 20px;
+        }
+
+        .no-data {
+            text-align: center;
+            color: var(--tg-theme-hint-color, #999);
+            font-style: italic;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="user-info"></div>
+    <div id="stats-content"></div>
+    <h3>Recent Activity</h3>
+    <div id="history-content"></div>
+    <div id="app-content"></div>
+    <script src="/app.js"></script>
+</body>
+
+</html>
