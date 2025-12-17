@@ -24,6 +24,10 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Pre-download InsightFace models
+COPY download_models.py .
+RUN python download_models.py
+
 # Copy application
 COPY . .
 
@@ -34,4 +38,4 @@ RUN mkdir -p uploads/faces uploads/attendance
 EXPOSE 8080
 
 # Run application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080}"]
