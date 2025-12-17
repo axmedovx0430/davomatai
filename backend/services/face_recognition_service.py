@@ -24,13 +24,20 @@ class FaceRecognitionService:
         """Load InsightFace model"""
         try:
             logger.info(f"Loading InsightFace model: {settings.INSIGHTFACE_MODEL}")
+            # Only load detection and recognition models to save memory
             self.app = FaceAnalysis(
                 name=settings.INSIGHTFACE_MODEL,
-                providers=['CPUExecutionProvider']  # Use GPU if available: ['CUDAExecutionProvider', 'CPUExecutionProvider']
+                allowed_modules=['detection', 'recognition'],
+                providers=['CPUExecutionProvider']
             )
             self.app.prepare(ctx_id=0, det_size=(320, 320))
+            
+            # Force garbage collection
+            import gc
+            gc.collect()
+            
             self.model_loaded = True
-            logger.info("InsightFace model loaded successfully")
+            logger.info("InsightFace model loaded successfully (Lite mode)")
         except Exception as e:
             logger.error(f"Failed to load InsightFace model: {e}")
             raise
