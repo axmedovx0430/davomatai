@@ -18,10 +18,14 @@ class FaceRecognitionService:
         """Initialize InsightFace model"""
         self.app = None
         self.model_loaded = False
-        self._load_model()
+        # Do not load model on init to save memory and startup time
+        # self.load_model()
     
-    def _load_model(self):
-        """Load InsightFace model"""
+    def load_model(self):
+        """Load InsightFace model lazily"""
+        if self.model_loaded:
+            return
+
         try:
             logger.info(f"Loading InsightFace model: {settings.INSIGHTFACE_MODEL}")
             # Only load detection and recognition models to save memory
@@ -53,7 +57,9 @@ class FaceRecognitionService:
             List of detected faces with bounding boxes and embeddings
         """
         if not self.model_loaded:
-            raise RuntimeError("Face recognition model not loaded")
+            self.load_model()
+            if not self.model_loaded:
+                raise RuntimeError("Face recognition model not loaded")
         
         try:
             faces = self.app.get(image)
