@@ -18,14 +18,11 @@ RUN apt-get update && apt-get install -y \
     wget \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy everything
-COPY . .
+# Copy only backend directory
+COPY backend/ .
 
-# Install Python dependencies from backend
-RUN pip install --no-cache-dir -r backend/requirements.txt
-
-# Move to backend directory
-WORKDIR /app/backend
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Create uploads directory
 RUN mkdir -p uploads/faces uploads/attendance
