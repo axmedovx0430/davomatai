@@ -4,7 +4,6 @@ Face Recognition Service using InsightFace
 import numpy as np
 import cv2
 from insightface.app import FaceAnalysis
-from sklearn.metrics.pairwise import cosine_similarity
 from typing import Optional, Tuple, List
 import os
 from config import settings
@@ -108,13 +107,16 @@ class FaceRecognitionService:
         Returns:
             Similarity score (0-1, higher is more similar)
         """
-        # Reshape for sklearn
-        emb1 = embedding1.reshape(1, -1)
-        emb2 = embedding2.reshape(1, -1)
+        # Calculate cosine similarity using numpy
+        # similarity = dot(a, b) / (norm(a) * norm(b))
+        dot_product = np.dot(embedding1, embedding2)
+        norm1 = np.linalg.norm(embedding1)
+        norm2 = np.linalg.norm(embedding2)
         
-        # Calculate cosine similarity
-        similarity = cosine_similarity(emb1, emb2)[0][0]
-        
+        if norm1 == 0 or norm2 == 0:
+            return 0.0
+            
+        similarity = dot_product / (norm1 * norm2)
         return float(similarity)
     
     def find_best_match(
