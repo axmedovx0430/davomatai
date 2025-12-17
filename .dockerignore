@@ -1,0 +1,19 @@
+# Ignore frontend files
+frontend/node_modules
+frontend/.next
+frontend/out
+
+# Ignore git files
+.git
+.gitignore
+
+# Ignore IDE files
+.vscode
+.idea
+
+# Ignore logs
+*.log
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
