@@ -2,7 +2,6 @@ services:
   - type: web
     name: davomatai-backend
     runtime: docker
-    plan: free
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     envVars:
@@ -20,4 +19,3 @@ databases:
   - name: davomatai-db
     databaseName: davomatai
     user: davomatai
-    plan: free
