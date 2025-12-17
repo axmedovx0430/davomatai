@@ -11,12 +11,12 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     
     # Security
-    SECRET_KEY: str
-    API_KEY_SALT: str
+    SECRET_KEY: str = "insecure-default-key-for-dev"
+    API_KEY_SALT: str = "default-salt"
     
     # Telegram
     TELEGRAM_BOT_TOKEN: str
-    TELEGRAM_ADMIN_CHAT_IDS: str
+    TELEGRAM_ADMIN_CHAT_IDS: str = ""
     
     # InsightFace
     INSIGHTFACE_MODEL: str = "buffalo_s"  # Changed from buffalo_l to buffalo_s (smaller, less memory)
