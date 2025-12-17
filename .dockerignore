@@ -1,11 +1,8 @@
 # Ignore frontend files
-frontend/node_modules
-frontend/.next
-frontend/out
+frontend/
 
 # Ignore git files
 .git
-.gitignore
 
 # Ignore IDE files
 .vscode
