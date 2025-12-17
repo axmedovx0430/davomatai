@@ -65,20 +65,15 @@ async def startup_event():
     except Exception as e:
         logger.error(f"Database initialization failed: {e}")
     
-    # Initialize face recognition model
+    # Initialize database
     try:
-        from services.face_recognition_service import face_recognition_service
-        logger.info("Face recognition service initialized")
+        init_db()
+        logger.info("Database initialized successfully")
     except Exception as e:
-        logger.error(f"Face recognition service initialization failed: {e}")
+        logger.error(f"Database initialization failed: {e}")
     
-    # Initialize Telegram bot
-    try:
-        from services.telegram_service import telegram_service
-        await telegram_service.start_polling()
-        logger.info("Telegram bot initialized and polling started")
-    except Exception as e:
-        logger.error(f"Telegram bot initialization failed: {e}")
+    # Services are initialized lazily when needed
+    logger.info("Services configured for lazy loading")
 
 
 @app.on_event("shutdown")
