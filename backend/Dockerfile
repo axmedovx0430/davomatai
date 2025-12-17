@@ -41,13 +41,8 @@ ENV OPENBLAS_NUM_THREADS=1
 ENV VECLIB_MAXIMUM_THREADS=1
 ENV NUMEXPR_NUM_THREADS=1
 
-# Copy entrypoint script
-COPY entrypoint.sh .
-RUN chmod +x entrypoint.sh
-
 # Expose port
 EXPOSE 8080
 
-# Run application via entrypoint
-ENTRYPOINT ["./entrypoint.sh"]
+# Run application
 CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080}"]
