@@ -16,9 +16,10 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./attendance.db"
     
     # Security
-    SECRET_KEY: str = "insecure-default-key-for-dev"
+    SECRET_KEY: str = "insecure-default-key"
     API_KEY_SALT: str = "default-salt"
-    DEFAULT_DEVICE_API_KEY: str = "kHBjHqVEi44yDZtPaDpSIkP8qwcrlMOGv4HxzKMuedw"
+    DEFAULT_DEVICE_API_KEY: str = ""
+    DEFAULT_ADMIN_PASSWORD: str = "admin123"
     
     # Telegram
     TELEGRAM_BOT_TOKEN: str = ""
@@ -51,7 +52,7 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:3000"
     
     # Hugging Face / Webhook
-    SPACE_ID: Optional[str] = "axmedx070/davomatai-backend"
+    SPACE_ID: Optional[str] = None
     WEBHOOK_URL: Optional[str] = None
     
     @property

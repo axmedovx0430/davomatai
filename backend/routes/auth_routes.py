@@ -18,8 +18,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 security = HTTPBearer()
 
-# Password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Password hashing context - Using sha256_crypt for maximum compatibility
+pwd_context = CryptContext(schemes=["sha256_crypt", "pbkdf2_sha256"], deprecated="auto")
 
 # JWT Settings
 SECRET_KEY = getattr(settings, "JWT_SECRET_KEY", "your-secret-key-change-this")
@@ -49,8 +49,14 @@ def hash_password(password: str) -> str:
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify password against hash"""
-    return pwd_context.verify(plain_password, hashed_password)
+    """Verify password against hash with error handling"""
+    try:
+        if not hashed_password:
+            return False
+        return pwd_context.verify(plain_password, hashed_password)
+    except Exception as e:
+        logger.error(f"Password verification error: {e}")
+        return False
 
 
 def create_access_token(data: dict) -> str:

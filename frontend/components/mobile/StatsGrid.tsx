@@ -49,7 +49,7 @@ export function StatsGrid({ stats, t }: StatsGridProps) {
                     </div>
                     <div className="w-1/2 text-center">
                         <div className="text-3xl font-extrabold text-blue-600">{Math.round(stats.attendance_rate)}%</div>
-                        <div className="text-[10px] font-medium text-gray-500 uppercase tracking-widest mt-1">Attendance Rate</div>
+                        <div className="text-[10px] font-medium text-gray-500 uppercase tracking-widest mt-1">{t('attendance_rate')}</div>
                     </div>
                 </CardContent>
             </Card>

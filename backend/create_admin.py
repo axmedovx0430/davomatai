@@ -4,6 +4,7 @@ Script to create admin user with password
 from database import SessionLocal
 from models.user import User
 from routes.auth_routes import hash_password
+from config import settings
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -19,7 +20,7 @@ def create_admin_user():
         if admin:
             logger.info("Admin user already exists")
             # Update password if needed
-            admin.password_hash = hash_password("admin123")
+            admin.password_hash = hash_password(settings.DEFAULT_ADMIN_PASSWORD)
             admin.role = "admin"
             db.commit()
             logger.info("Admin password updated")
@@ -30,7 +31,7 @@ def create_admin_user():
                 employee_id="ADMIN001",
                 email="admin@davomatai.uz",
                 role="admin",
-                password_hash=hash_password("admin123"),
+                password_hash=hash_password(settings.DEFAULT_ADMIN_PASSWORD),
                 is_active=True
             )
             db.add(admin)
@@ -41,7 +42,7 @@ def create_admin_user():
         print("ADMIN CREDENTIALS")
         print("="*50)
         print(f"Employee ID: ADMIN001")
-        print(f"Password: admin123")
+        print(f"Password: {settings.DEFAULT_ADMIN_PASSWORD}")
         print("="*50)
         print("\nIMPORTANT: Change the password after first login!")
         print("="*50 + "\n")

@@ -17,6 +17,12 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/attendance", tags=["Attendance"])
 
 
+@router.get("/health")
+async def attendance_health():
+    """Health check for attendance router"""
+    return {"status": "ok", "router": "attendance"}
+
+
 @router.get("")
 async def get_attendance(
     start_date: Optional[str] = None,

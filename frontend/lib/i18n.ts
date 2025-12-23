@@ -40,7 +40,8 @@ export const translations = {
         profile: "Profil",
         course: "Kurs",
         major: "Yo'nalish",
-        faculty: "Fakultet"
+        faculty: "Fakultet",
+        attendance_rate: "Davomat foizi"
     },
     ru: {
         welcome: "Добро пожаловать",
@@ -81,7 +82,8 @@ export const translations = {
         profile: "Профиль",
         course: "Курс",
         major: "Направление",
-        faculty: "Факультет"
+        faculty: "Факультет",
+        attendance_rate: "Процент посещаемости"
     },
     en: {
         welcome: "Welcome",
@@ -122,8 +124,10 @@ export const translations = {
         profile: "Profile",
         course: "Course",
         major: "Major",
-        faculty: "Faculty"
+        faculty: "Faculty",
+        attendance_rate: "Attendance Rate"
     }
+}
 };
 
 export const getTranslation = (lang: Language, key: keyof typeof translations['uz']) => {

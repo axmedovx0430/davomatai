@@ -2,10 +2,11 @@ from telegram import Bot, MenuButtonWebApp, WebAppInfo
 from telegram.error import TelegramError
 import asyncio
 import logging
+from config import settings
 
 # Configuration
-BOT_TOKEN = "8296672835:AAEKDyvLzBPAgBotc9prA9VGxZYh8d7pesk"
-WEB_APP_URL = "https://axmedx070-davomatai-backend.hf.space/mobile"
+BOT_TOKEN = settings.TELEGRAM_BOT_TOKEN
+WEB_APP_URL = f"{settings.frontend_url}/mobile"
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

@@ -38,21 +38,30 @@ app.add_middleware(
 )
 
 # Import routes
-from routes import face_routes, user_routes, attendance_routes, device_routes, group_routes, time_settings_routes, schedule_routes, auth_routes
+# Import routes
+from routes.auth_routes import router as auth_router
+from routes.face_routes import router as face_router
+from routes.user_routes import router as user_router
+from routes.attendance_routes import router as attendance_router
+from routes.device_routes import router as device_router
+from routes.group_routes import router as group_router
+from routes.time_settings_routes import router as time_settings_router
+from routes.schedule_routes import router as schedule_router
 
 # Register routers
-app.include_router(auth_routes.router)
-app.include_router(face_routes.router)
-app.include_router(user_routes.router)
-app.include_router(attendance_routes.router)
-app.include_router(device_routes.router)
-app.include_router(group_routes.router)
-app.include_router(time_settings_routes.router)
-app.include_router(schedule_routes.router)
+app.include_router(auth_router)
+app.include_router(face_router)
+app.include_router(user_router)
+app.include_router(attendance_router)
+app.include_router(device_router)
+app.include_router(group_router)
+app.include_router(time_settings_router)
+app.include_router(schedule_router)
 
 # Serve uploaded files
 if os.path.exists(settings.UPLOAD_DIR):
     app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
+
 
 
 @app.on_event("startup")
@@ -69,10 +78,71 @@ async def startup_event():
         logger.info("Running database migrations...")
         migrate_users_table(engine)
         migrate_schedules_table(engine)
+        
+        # Add password_hash column migration
+        try:
+            from sqlalchemy import text
+            with engine.connect() as conn:
+                # Check if password_hash column exists
+                result = conn.execute(text("""
+                    SELECT column_name 
+                    FROM information_schema.columns 
+                    WHERE table_name='users' AND column_name='password_hash'
+                """))
+                
+                if not result.fetchone():
+                    # Add password_hash column
+                    conn.execute(text("""
+                        ALTER TABLE users 
+                        ADD COLUMN password_hash VARCHAR(255)
+                    """))
+                    conn.commit()
+                    logger.info("✅ Added password_hash column to users table")
+                else:
+                    logger.info("✅ password_hash column already exists")
+        except Exception as e:
+            logger.error(f"Password hash migration failed: {e}")
+        
         logger.info("Database migrations completed")
 
         init_db()
         logger.info("Database initialized successfully")
+        
+        # Create admin user if not exists
+        try:
+            from database import SessionLocal
+            from models.user import User
+            from passlib.context import CryptContext
+            
+            # Use sha256_crypt for maximum compatibility
+            pwd_context = CryptContext(schemes=["sha256_crypt", "pbkdf2_sha256"], deprecated="auto")
+            
+            db = SessionLocal()
+            try:
+                admin = db.query(User).filter(User.employee_id == "ADMIN001").first()
+                if not admin:
+                    admin = User(
+                        full_name="Administrator",
+                        employee_id="ADMIN001",
+                        email="admin@davomatai.uz",
+                        role="admin",
+                        password_hash=pwd_context.hash(settings.DEFAULT_ADMIN_PASSWORD),
+                        is_active=True
+                    )
+                    db.add(admin)
+                    db.commit()
+                    logger.info("✅ Admin user created (ADMIN001/admin123)")
+                else:
+                    # Always update password to ensure it's set
+                    admin.password_hash = pwd_context.hash(settings.DEFAULT_ADMIN_PASSWORD)
+                    admin.role = "admin"
+                    admin.is_active = True
+                    db.commit()
+                    logger.info(f"✅ Admin password updated (ADMIN001/{settings.DEFAULT_ADMIN_PASSWORD})")
+            finally:
+                db.close()
+        except Exception as e:
+            logger.error(f"Admin user creation failed: {e}")
     except Exception as e:
         logger.error(f"Database initialization failed: {e}")
     

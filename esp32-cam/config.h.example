@@ -1,7 +1,7 @@
 /*
- * Configuration file for ESP32-CAM
+ * Configuration file for ESP32-CAM (Example)
  * 
- * IMPORTANT: Update these values before uploading!
+ * Rename this file to config.h and update the values!
  */
 
 #ifndef CONFIG_H
