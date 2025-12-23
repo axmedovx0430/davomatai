@@ -2,20 +2,22 @@
 Configuration settings for the application
 """
 from pydantic_settings import BaseSettings
-from typing import List
+from typing import List, Optional
 import os
 
 
 class Settings(BaseSettings):
     # Database
-    DATABASE_URL: str
+    DATABASE_URL: str = "sqlite:///./attendance.db"
     
     # Security
     SECRET_KEY: str = "insecure-default-key-for-dev"
     API_KEY_SALT: str = "default-salt"
     
     # Telegram
-    TELEGRAM_BOT_TOKEN: str
+    TELEGRAM_BOT_TOKEN: str = ""
+    TELEGRAM_PROXY_URL: Optional[str] = None
+    TELEGRAM_API_BASE_URL: str = "https://api.telegram.org/bot"
     TELEGRAM_ADMIN_CHAT_IDS: str = ""
     
     # InsightFace
@@ -40,11 +42,36 @@ class Settings(BaseSettings):
     WORK_START_TIME: str = "09:00"
     
     # Frontend
-    FRONTEND_URL: str = "https://0bdcea5eac151a5f13d25d52a69344c5.serveousercontent.com"  # Serveo URL
+    FRONTEND_URL: str = "http://localhost:3000"
+    
+    # Hugging Face / Webhook
+    SPACE_ID: Optional[str] = None
+    WEBHOOK_URL: Optional[str] = None
+    
+    @property
+    def frontend_url(self) -> str:
+        """Get the public frontend URL, auto-detecting Hugging Face if needed"""
+        if self.FRONTEND_URL and "localhost" not in self.FRONTEND_URL:
+            return self.FRONTEND_URL
+        if self.SPACE_ID:
+            # username/space-name -> username-space-name.hf.space
+            host = self.SPACE_ID.replace("/", "-").lower()
+            return f"https://{host}.hf.space"
+        return self.FRONTEND_URL
+
+    @property
+    def telegram_webhook_url(self) -> Optional[str]:
+        """Construct webhook URL from SPACE_ID if not explicitly set"""
+        if self.WEBHOOK_URL:
+            return self.WEBHOOK_URL
+        if self.SPACE_ID:
+            return f"{self.frontend_url}/api/telegram/webhook"
+        return None
     
     class Config:
         env_file = ".env"
         case_sensitive = True
+        extra = "allow"
     
     @property
     def admin_chat_ids(self) -> List[int]:
@@ -59,6 +86,8 @@ class Settings(BaseSettings):
 
 # Create settings instance
 settings = Settings()
+print(f"DEBUG: Settings initialized. Attributes: {[a for a in dir(settings) if not a.startswith('_')]}")
+logger.info(f"DEBUG: Settings initialized. Attributes: {[a for a in dir(settings) if not a.startswith('_')]}")
 
 # Create upload directory if it doesn't exist
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)

@@ -424,7 +424,7 @@ export default function HomePage() {
                                                         <button
                                                             onClick={() => {
                                                                 if (record.image_path) {
-                                                                    const imageUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/${record.image_path}`
+                                                                    const imageUrl = `${process.env.NEXT_PUBLIC_API_URL || ''}/${record.image_path}`
                                                                     setSelectedImage(imageUrl)
                                                                     setSelectedRecord(record)
                                                                 } else {

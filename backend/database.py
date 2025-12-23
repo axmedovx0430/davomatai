@@ -35,6 +35,25 @@ def get_db() -> Generator[Session, None, None]:
 
 def init_db():
     """
-    Initialize database - create all tables
+    Initialize database - create all tables and default admin if needed
     """
     Base.metadata.create_all(bind=engine)
+    
+    # Create default admin if no users exist
+    db = SessionLocal()
+    try:
+        from models.user import User
+        if db.query(User).count() == 0:
+            admin = User(
+                full_name="Administrator",
+                employee_id="ADMIN001",
+                role="admin",
+                is_active=True
+            )
+            db.add(admin)
+            db.commit()
+            print("Default admin user created: ADMIN001")
+    except Exception as e:
+        print(f"Error creating default admin: {e}")
+    finally:
+        db.close()

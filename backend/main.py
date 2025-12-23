@@ -1,7 +1,7 @@
 """
 FastAPI Main Application
 """
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from config import settings
@@ -19,6 +19,7 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+logger.info("VERSION: 2.0.0 - ROBUST SETTINGS - MAIN")
 
 # Create FastAPI app
 app = FastAPI(
@@ -65,12 +66,20 @@ async def startup_event():
     except Exception as e:
         logger.error(f"Database initialization failed: {e}")
     
-    # Initialize database
+    # Start Telegram bot
     try:
-        init_db()
-        logger.info("Database initialized successfully")
+        from services.telegram_service import telegram_service
+        import asyncio
+        # Start polling or setup webhook
+        asyncio.create_task(telegram_service.start_polling())
+        
+        # If on Hugging Face, set the webhook
+        if getattr(settings, "SPACE_ID", None):
+            asyncio.create_task(telegram_service.set_webhook())
+            
+        logger.info("Telegram bot startup initiated")
     except Exception as e:
-        logger.error(f"Database initialization failed: {e}")
+        logger.error(f"Failed to start Telegram bot: {e}")
     
     # Services are initialized lazily when needed
     logger.info("Services configured for lazy loading")
@@ -78,7 +87,6 @@ async def startup_event():
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    """Cleanup on shutdown"""
     """Cleanup on shutdown"""
     logger.info("Shutting down ESP32-CAM Attendance System API")
     
@@ -108,6 +116,19 @@ async def health_check():
         "database": "connected",
         "face_recognition": "loaded"
     }
+
+
+@app.post("/api/telegram/webhook")
+async def telegram_webhook(request: Request):
+    """Handle incoming Telegram updates via Webhook"""
+    try:
+        from services.telegram_service import telegram_service
+        data = await request.json()
+        success = await telegram_service.process_update(data)
+        return {"status": "ok" if success else "error"}
+    except Exception as e:
+        logger.error(f"Webhook error: {e}")
+        return {"status": "error", "message": str(e)}
 
 
 if __name__ == "__main__":

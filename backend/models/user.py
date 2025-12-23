@@ -25,6 +25,7 @@ class User(Base):
     telegram_username = Column(String(100), nullable=True)
     telegram_notifications = Column(Boolean, default=True)
     telegram_registered_at = Column(DateTime(timezone=True), nullable=True)
+    language = Column(String(10), default="uz")  # 'uz', 'ru', or 'en'
     
     # Relationships
     faces = relationship("Face", back_populates="user", cascade="all, delete-orphan")
@@ -48,5 +49,6 @@ class User(Base):
             "telegram_chat_id": self.telegram_chat_id,
             "telegram_username": self.telegram_username,
             "telegram_notifications": self.telegram_notifications,
-            "telegram_registered_at": self.telegram_registered_at.isoformat() if self.telegram_registered_at else None
+            "telegram_registered_at": self.telegram_registered_at.isoformat() if self.telegram_registered_at else None,
+            "language": self.language
         }

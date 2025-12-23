@@ -35,6 +35,8 @@ class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
     role: Optional[str] = None
     is_active: Optional[bool] = None
+    language: Optional[str] = None
+    telegram_notifications: Optional[bool] = None
 
 
 @router.get("")
@@ -174,6 +176,10 @@ async def update_user(
         user.role = user_data.role
     if user_data.is_active is not None:
         user.is_active = user_data.is_active
+    if user_data.language is not None:
+        user.language = user_data.language
+    if user_data.telegram_notifications is not None:
+        user.telegram_notifications = user_data.telegram_notifications
     
     db.commit()
     db.refresh(user)
@@ -207,4 +213,37 @@ async def delete_user(user_id: int, db: Session = Depends(get_db)):
     return {
         "success": True,
         "message": "User deleted successfully"
+    }
+
+
+@router.put("/telegram/settings/{telegram_id}")
+async def update_user_settings_by_telegram_id(
+    telegram_id: str,
+    user_data: UserUpdate,
+    db: Session = Depends(get_db)
+):
+    """Update user settings by Telegram ID"""
+    user = db.query(User).filter(User.telegram_chat_id == telegram_id).first()
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # Update only allowed settings
+    if user_data.language is not None:
+        user.language = user_data.language
+    if user_data.telegram_notifications is not None:
+        user.telegram_notifications = user_data.telegram_notifications
+    
+    db.commit()
+    db.refresh(user)
+    
+    logger.info(f"User settings updated via Telegram: {user.employee_id}")
+    
+    return {
+        "success": True,
+        "message": "Settings updated successfully",
+        "user": user.to_dict()
     }

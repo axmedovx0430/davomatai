@@ -1,0 +1,69 @@
+# Stage 1: Build Frontend
+FROM node:18-slim AS frontend-builder
+WORKDIR /app/frontend
+COPY frontend/package.json ./
+RUN npm install --no-package-lock
+COPY frontend/ ./
+ARG NEXT_PUBLIC_API_URL=
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+RUN npm run build
+
+# Stage 2: Backend & Final Image
+FROM python:3.11-slim
+WORKDIR /app
+
+# Install system dependencies + Node.js
+RUN apt-get update && apt-get install -y \
+    libpq-dev gcc g++ cmake libopencv-dev libgl1 libglib2.0-0 \
+    libsm6 libxext6 libxrender-dev libgomp1 wget nginx curl dnsutils iputils-ping \
+    && curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY backend/requirements.txt ./backend/
+RUN pip install --no-cache-dir -r backend/requirements.txt
+
+COPY backend/download_models.py ./backend/
+RUN python backend/download_models.py
+
+COPY backend/ ./backend/
+
+# Frontend fayllarini nusxalash
+COPY --from=frontend-builder /app/frontend/.next ./frontend/.next
+COPY --from=frontend-builder /app/frontend/public ./frontend/public
+COPY --from=frontend-builder /app/frontend/package.json ./frontend/
+COPY --from=frontend-builder /app/frontend/node_modules ./frontend/node_modules
+
+RUN echo 'server { \
+    listen 7860; \
+    location /api { \
+    proxy_pass http://localhost:8080; \
+    proxy_set_header Host $host; \
+    proxy_set_header X-Real-IP $remote_addr; \
+    } \
+    location / { \
+    proxy_pass http://localhost:3000; \
+    proxy_set_header Host $host; \
+    proxy_set_header X-Real-IP $remote_addr; \
+    } \
+    }' > /etc/nginx/sites-available/default
+
+RUN echo '#!/bin/bash\n\
+    # Try to fix DNS if possible\n\
+    echo "nameserver 8.8.8.8" > /etc/resolv.conf || echo "Cannot update resolv.conf"\n\
+    echo "nameserver 1.1.1.1" >> /etc/resolv.conf || echo "Cannot update resolv.conf"\n\
+    \n\
+    nginx\n\
+    cd /app/backend && uvicorn main:app --host 0.0.0.0 --port 8080 &\n\
+    cd /app/frontend && npm start -- -p 3000\n\
+    wait -n\n\
+    exit $?' > /app/start.sh
+RUN chmod +x /app/start.sh
+
+ENV OMP_NUM_THREADS=1
+ENV MKL_NUM_THREADS=1
+ENV PORT=7860
+
+EXPOSE 7860
+
+CMD ["/app/start.sh"]

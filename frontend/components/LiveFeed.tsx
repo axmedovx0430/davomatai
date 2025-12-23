@@ -82,7 +82,7 @@ export default function LiveFeed() {
                                 <div className="relative flex-shrink-0">
                                     {record.image_path ? (
                                         <img
-                                            src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/${record.image_path}`}
+                                            src={`${process.env.NEXT_PUBLIC_API_URL || ''}/${record.image_path}`}
                                             alt={record.user_name}
                                             className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm"
                                         />
