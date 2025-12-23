@@ -16,6 +16,7 @@ class User(Base):
     phone = Column(String(20))
     email = Column(String(255))
     role = Column(String(20), default="user")  # 'admin' or 'user'
+    password_hash = Column(String(255), nullable=True)  # For web panel login
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -26,6 +27,11 @@ class User(Base):
     telegram_notifications = Column(Boolean, default=True)
     telegram_registered_at = Column(DateTime(timezone=True), nullable=True)
     language = Column(String(10), default="uz")  # 'uz', 'ru', or 'en'
+    
+    # Academic fields
+    course = Column(Integer, nullable=True)
+    major = Column(String(255), nullable=True)
+    faculty = Column(String(255), nullable=True)
     
     # Relationships
     faces = relationship("Face", back_populates="user", cascade="all, delete-orphan")
@@ -50,5 +56,8 @@ class User(Base):
             "telegram_username": self.telegram_username,
             "telegram_notifications": self.telegram_notifications,
             "telegram_registered_at": self.telegram_registered_at.isoformat() if self.telegram_registered_at else None,
-            "language": self.language
+            "language": self.language,
+            "course": self.course,
+            "major": self.major,
+            "faculty": self.faculty
         }

@@ -312,6 +312,25 @@ def update_schedule(
         )
 
 
+@router.get("/user/{user_id}")
+def get_user_schedules(
+    user_id: int,
+    db: Session = Depends(get_db)
+):
+    """Get all active schedules for a specific user based on their group memberships"""
+    try:
+        schedules = schedule_service.get_user_schedules(db, user_id)
+        return {
+            "success": True,
+            "schedules": [s.to_dict() for s in schedules]
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+
 @router.delete("/{schedule_id}")
 def delete_schedule(
     schedule_id: int,

@@ -20,6 +20,9 @@ class UserCreate(BaseModel):
     phone: Optional[str] = None
     email: Optional[EmailStr] = None
     role: str = "user"
+    course: Optional[int] = None
+    major: Optional[str] = None
+    faculty: Optional[str] = None
 
     @field_validator('email', 'phone', mode='before')
     @classmethod
@@ -37,6 +40,9 @@ class UserUpdate(BaseModel):
     is_active: Optional[bool] = None
     language: Optional[str] = None
     telegram_notifications: Optional[bool] = None
+    course: Optional[int] = None
+    major: Optional[str] = None
+    faculty: Optional[str] = None
 
 
 @router.get("")

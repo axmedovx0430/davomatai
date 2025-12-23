@@ -12,7 +12,7 @@ import WeekSelector from '@/components/WeekSelector'
 import WeeklyScheduleGrid from '@/components/WeeklyScheduleGrid'
 import ScheduleModal from '@/components/ScheduleModal'
 import LiveFeed from '@/components/LiveFeed'
-import MobileDashboard from '@/components/MobileDashboard'
+import ProtectedRoute from '@/components/ProtectedRoute'
 
 // Type definitions
 interface AttendanceRecord {
@@ -185,342 +185,322 @@ export default function HomePage() {
 
     const attendance = scheduleAttendance || []
 
-    const [isAdminMode, setIsAdminMode] = useState(false)
-
-    // Check if we should show admin mode (e.g. on desktop or via secret query param)
-    useEffect(() => {
-        const urlParams = new URLSearchParams(window.location.search)
-        if (urlParams.get('mode') === 'admin') {
-            setIsAdminMode(true)
-        }
-    }, [])
-
-    if (!isAdminMode) {
-        return (
-            <MobileDashboard onSwitchToAdmin={() => setIsAdminMode(true)} />
-        )
-    }
-
     return (
-        <div className="min-h-screen bg-gradient-to-br from-primary-50 to-blue-50">
-            {/* Header */}
-            <header className="bg-white shadow-sm border-b">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h1 className="text-3xl font-bold text-gray-900">Davomat Tizimi</h1>
-                            <p className="text-gray-600 mt-1">ESP32-CAM yuz tanish asosida</p>
-                        </div>
-                        <nav className="flex gap-4">
-                            <button
-                                onClick={() => setIsAdminMode(false)}
-                                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                            >
-                                Mobile View
-                            </button>
-                            <Link
-                                href="/"
-                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                            >
-                                Dashboard
-                            </Link>
-                            <Link
-                                href="/users"
-                                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                            >
-                                Foydalanuvchilar
-                            </Link>
-                            <Link
-                                href="/attendance"
-                                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                            >
-                                Davomat
-                            </Link>
-                            <Link
-                                href="/devices"
-                                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                            >
-                                Qurilmalar
-                            </Link>
-                            <Link
-                                href="/groups"
-                                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                            >
-                                Guruhlar
-                            </Link>
-                        </nav>
-                    </div>
-                </div>
-            </header>
-
-            {/* Main Content */}
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    <StatCard
-                        title="Jami Xodimlar"
-                        value={stats.total_users || 0}
-                        icon={<Users className="w-8 h-8" />}
-                        color="bg-blue-500"
-                        loading={statsLoading}
-                        onClick={() => router.push(selectedGroupId ? `/users?group_id=${selectedGroupId}` : '/users')}
-                    />
-                    <StatCard
-                        title="Kelganlar"
-                        value={stats.present || 0}
-                        icon={<UserCheck className="w-8 h-8" />}
-                        color="bg-green-500"
-                        loading={statsLoading}
-                        onClick={() => router.push(selectedGroupId ? `/attendance?status=present&group_id=${selectedGroupId}` : '/attendance?status=present')}
-                    />
-                    <StatCard
-                        title="Kechikkanlar"
-                        value={stats.late || 0}
-                        icon={<Clock className="w-8 h-8" />}
-                        color="bg-yellow-500"
-                        loading={statsLoading}
-                        onClick={() => router.push(selectedGroupId ? `/attendance?status=late&group_id=${selectedGroupId}` : '/attendance?status=late')}
-                    />
-                    <StatCard
-                        title="Kelmaganlar"
-                        value={stats.absent || 0}
-                        icon={<AlertCircle className="w-8 h-8" />}
-                        color="bg-red-500"
-                        loading={statsLoading}
-                        onClick={() => router.push(selectedGroupId ? `/attendance?status=absent&group_id=${selectedGroupId}` : '/attendance?status=absent')}
-                    />
-                </div>
-
-                {/* Main Grid Layout */}
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                    {/* Left Column (Main Content) */}
-                    <div className="lg:col-span-3 space-y-8">
-                        {/* Selected Schedule Info */}
-                        {selectedSchedule && (
-                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <span className="text-sm text-blue-600 font-medium">Tanlangan dars:</span>
-                                        <span className="ml-2 text-lg font-bold text-blue-900">
-                                            {selectedSchedule.name}
-                                        </span>
-                                        <span className="ml-2 text-sm text-blue-600">
-                                            ({selectedSchedule.start_time} - {selectedSchedule.end_time})
-                                        </span>
-                                    </div>
-                                    <button
-                                        onClick={() => setSelectedSchedule(null)}
-                                        className="px-3 py-1 text-sm bg-white text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
-                                    >
-                                        Barcha darslar
-                                    </button>
-                                </div>
+        <ProtectedRoute>
+            <div className="min-h-screen bg-gradient-to-br from-primary-50 to-blue-50">
+                {/* Header */}
+                <header className="bg-white shadow-sm border-b">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h1 className="text-3xl font-bold text-gray-900">Davomat Tizimi</h1>
+                                <p className="text-gray-600 mt-1">ESP32-CAM yuz tanish asosida</p>
                             </div>
-                        )}
-
-                        {/* Week Selector */}
-                        {currentYear > 0 && currentWeek > 0 && (
-                            <div className="space-y-4">
-                                <WeekSelector
-                                    year={currentYear}
-                                    week={currentWeek}
-                                    onWeekChange={handleWeekChange}
-                                />
-
-                                {/* Group Filter */}
-                                <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Guruh bo'yicha filtrlash
-                                    </label>
-                                    <select
-                                        value={selectedGroupId}
-                                        onChange={(e) => setSelectedGroupId(e.target.value)}
-                                        className="w-full md:w-64 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    >
-                                        <option value="">Barcha guruhlar</option>
-                                        {groups?.map((group: any) => (
-                                            <option key={group.id} value={group.id}>
-                                                {group.name} ({group.code})
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Weekly Schedule Grid */}
-                        <div className="card">
-                            <div className="flex items-center justify-between mb-6">
-                                <h2 className="text-2xl font-bold text-gray-900">Bu hafta</h2>
-                            </div>
-
-                            {schedulesLoading ? (
-                                <div className="text-center py-12">
-                                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-                                    <p className="mt-4 text-gray-600">Yuklanmoqda...</p>
-                                </div>
-                            ) : (
-                                <WeeklyScheduleGrid
-                                    schedules={filteredSchedules}
-                                    onScheduleClick={handleScheduleClick}
-                                    onAddSchedule={handleAddSchedule}
-                                    onEditSchedule={handleEditSchedule}
-                                    onDeleteSchedule={handleDeleteSchedule}
-                                    selectedScheduleId={selectedSchedule?.id || null}
-                                    weekDates={weekDates}
-                                    groups={groups}
-                                />
-                            )}
+                            <nav className="flex gap-4">
+                                <Link
+                                    href="/"
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                >
+                                    Dashboard
+                                </Link>
+                                <Link
+                                    href="/users"
+                                    className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                >
+                                    Foydalanuvchilar
+                                </Link>
+                                <Link
+                                    href="/attendance"
+                                    className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                >
+                                    Davomat
+                                </Link>
+                                <Link
+                                    href="/devices"
+                                    className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                >
+                                    Qurilmalar
+                                </Link>
+                                <Link
+                                    href="/groups"
+                                    className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                >
+                                    Guruhlar
+                                </Link>
+                            </nav>
                         </div>
                     </div>
+                </header>
 
-                    {/* Attendance Table */}
-                    {selectedSchedule && (
-                        <div className="card">
-                            <h3 className="text-xl font-bold text-gray-900 mb-4">
-                                {selectedSchedule.name} - Davomat
-                            </h3>
+                {/* Main Content */}
+                <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                    {/* Stats Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        <StatCard
+                            title="Jami Xodimlar"
+                            value={stats.total_users || 0}
+                            icon={<Users className="w-8 h-8" />}
+                            color="bg-blue-500"
+                            loading={statsLoading}
+                            onClick={() => router.push(selectedGroupId ? `/users?group_id=${selectedGroupId}` : '/users')}
+                        />
+                        <StatCard
+                            title="Kelganlar"
+                            value={stats.present || 0}
+                            icon={<UserCheck className="w-8 h-8" />}
+                            color="bg-green-500"
+                            loading={statsLoading}
+                            onClick={() => router.push(selectedGroupId ? `/attendance?status=present&group_id=${selectedGroupId}` : '/attendance?status=present')}
+                        />
+                        <StatCard
+                            title="Kechikkanlar"
+                            value={stats.late || 0}
+                            icon={<Clock className="w-8 h-8" />}
+                            color="bg-yellow-500"
+                            loading={statsLoading}
+                            onClick={() => router.push(selectedGroupId ? `/attendance?status=late&group_id=${selectedGroupId}` : '/attendance?status=late')}
+                        />
+                        <StatCard
+                            title="Kelmaganlar"
+                            value={stats.absent || 0}
+                            icon={<AlertCircle className="w-8 h-8" />}
+                            color="bg-red-500"
+                            loading={statsLoading}
+                            onClick={() => router.push(selectedGroupId ? `/attendance?status=absent&group_id=${selectedGroupId}` : '/attendance?status=absent')}
+                        />
+                    </div>
 
-                            {attendance.length === 0 ? (
-                                <div className="text-center py-12">
-                                    <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                                    <p className="text-gray-600">Bu darsda hozircha davomat yo'q</p>
-                                </div>
-                            ) : (
-                                <div className="overflow-x-auto">
-                                    <table className="w-full">
-                                        <thead className="bg-gray-50 border-b">
-                                            <tr>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Xodim
-                                                </th>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    ID
-                                                </th>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Vaqt
-                                                </th>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Ishonch
-                                                </th>
-                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Status
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="bg-white divide-y divide-gray-200">
-                                            {attendance.map((record: AttendanceRecord) => (
-                                                <tr key={record.id} className="hover:bg-gray-50">
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <div className="font-medium text-gray-900">{record.user_name}</div>
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                                        {record.employee_id}
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                                        {new Date(record.check_in_time).toLocaleTimeString('uz-UZ')}
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                                        <button
-                                                            onClick={() => {
-                                                                if (record.image_path) {
-                                                                    const imageUrl = `${process.env.NEXT_PUBLIC_API_URL || ''}/${record.image_path}`
-                                                                    setSelectedImage(imageUrl)
-                                                                    setSelectedRecord(record)
-                                                                } else {
-                                                                    alert('Rasm mavjud emas')
-                                                                }
-                                                            }}
-                                                            className={`text-blue-600 hover:text-blue-800 font-medium ${record.image_path ? 'cursor-pointer underline' : 'cursor-not-allowed text-gray-400'}`}
-                                                            disabled={!record.image_path}
-                                                        >
-                                                            {(record.confidence * 100).toFixed(1)}%
-                                                        </button>
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${record.status === 'present'
-                                                            ? 'bg-green-100 text-green-800'
-                                                            : 'bg-yellow-100 text-yellow-800'
-                                                            }`}>
-                                                            {record.status === 'present' ? 'Keldi' : 'Kechikdi'}
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* Groups Section */}
-                    <div className="pt-4">
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-xl font-bold text-gray-900">Guruhlar</h2>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {groups?.map((group: any) => (
-                                <div key={group.id} className="bg-white rounded-lg shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow">
-                                    <div className="flex justify-between items-start mb-4">
+                    {/* Main Grid Layout */}
+                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                        {/* Left Column (Main Content) */}
+                        <div className="lg:col-span-3 space-y-8">
+                            {/* Selected Schedule Info */}
+                            {selectedSchedule && (
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                    <div className="flex items-center justify-between">
                                         <div>
-                                            <h3 className="font-bold text-lg text-gray-900">{group.name}</h3>
-                                            <p className="text-sm text-gray-500">{group.code}</p>
+                                            <span className="text-sm text-blue-600 font-medium">Tanlangan dars:</span>
+                                            <span className="ml-2 text-lg font-bold text-blue-900">
+                                                {selectedSchedule.name}
+                                            </span>
+                                            <span className="ml-2 text-sm text-blue-600">
+                                                ({selectedSchedule.start_time} - {selectedSchedule.end_time})
+                                            </span>
                                         </div>
-                                        <div className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                                            {group.student_count} talaba
-                                        </div>
+                                        <button
+                                            onClick={() => setSelectedSchedule(null)}
+                                            className="px-3 py-1 text-sm bg-white text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
+                                        >
+                                            Barcha darslar
+                                        </button>
                                     </div>
-                                    <div className="text-sm text-gray-600">
-                                        <p>{group.faculty || 'Fakultet ko\'rsatilmagan'}</p>
-                                        <p>{group.course}-kurs, {group.semester}-semestr</p>
-                                    </div>
-                                </div>
-                            ))}
-                            {(!groups || groups.length === 0) && (
-                                <div className="col-span-full text-center py-8 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-                                    Hozircha guruhlar yo'q
                                 </div>
                             )}
+
+                            {/* Week Selector */}
+                            {currentYear > 0 && currentWeek > 0 && (
+                                <div className="space-y-4">
+                                    <WeekSelector
+                                        year={currentYear}
+                                        week={currentWeek}
+                                        onWeekChange={handleWeekChange}
+                                    />
+
+                                    {/* Group Filter */}
+                                    <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Guruh bo'yicha filtrlash
+                                        </label>
+                                        <select
+                                            value={selectedGroupId}
+                                            onChange={(e) => setSelectedGroupId(e.target.value)}
+                                            className="w-full md:w-64 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        >
+                                            <option value="">Barcha guruhlar</option>
+                                            {groups?.map((group: any) => (
+                                                <option key={group.id} value={group.id}>
+                                                    {group.name} ({group.code})
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Weekly Schedule Grid */}
+                            <div className="card">
+                                <div className="flex items-center justify-between mb-6">
+                                    <h2 className="text-2xl font-bold text-gray-900">Bu hafta</h2>
+                                </div>
+
+                                {schedulesLoading ? (
+                                    <div className="text-center py-12">
+                                        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+                                        <p className="mt-4 text-gray-600">Yuklanmoqda...</p>
+                                    </div>
+                                ) : (
+                                    <WeeklyScheduleGrid
+                                        schedules={filteredSchedules}
+                                        onScheduleClick={handleScheduleClick}
+                                        onAddSchedule={handleAddSchedule}
+                                        onEditSchedule={handleEditSchedule}
+                                        onDeleteSchedule={handleDeleteSchedule}
+                                        selectedScheduleId={selectedSchedule?.id || null}
+                                        weekDates={weekDates}
+                                        groups={groups}
+                                    />
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Attendance Table */}
+                        {selectedSchedule && (
+                            <div className="card">
+                                <h3 className="text-xl font-bold text-gray-900 mb-4">
+                                    {selectedSchedule.name} - Davomat
+                                </h3>
+
+                                {attendance.length === 0 ? (
+                                    <div className="text-center py-12">
+                                        <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                                        <p className="text-gray-600">Bu darsda hozircha davomat yo'q</p>
+                                    </div>
+                                ) : (
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full">
+                                            <thead className="bg-gray-50 border-b">
+                                                <tr>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Xodim
+                                                    </th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        ID
+                                                    </th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Vaqt
+                                                    </th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Ishonch
+                                                    </th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Status
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="bg-white divide-y divide-gray-200">
+                                                {attendance.map((record: AttendanceRecord) => (
+                                                    <tr key={record.id} className="hover:bg-gray-50">
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <div className="font-medium text-gray-900">{record.user_name}</div>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                                            {record.employee_id}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                                            {new Date(record.check_in_time).toLocaleTimeString('uz-UZ')}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                            <button
+                                                                onClick={() => {
+                                                                    if (record.image_path) {
+                                                                        const imageUrl = `${process.env.NEXT_PUBLIC_API_URL || ''}/${record.image_path}`
+                                                                        setSelectedImage(imageUrl)
+                                                                        setSelectedRecord(record)
+                                                                    } else {
+                                                                        alert('Rasm mavjud emas')
+                                                                    }
+                                                                }}
+                                                                className={`text-blue-600 hover:text-blue-800 font-medium ${record.image_path ? 'cursor-pointer underline' : 'cursor-not-allowed text-gray-400'}`}
+                                                                disabled={!record.image_path}
+                                                            >
+                                                                {(record.confidence * 100).toFixed(1)}%
+                                                            </button>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${record.status === 'present'
+                                                                ? 'bg-green-100 text-green-800'
+                                                                : 'bg-yellow-100 text-yellow-800'
+                                                                }`}>
+                                                                {record.status === 'present' ? 'Keldi' : 'Kechikdi'}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Groups Section */}
+                        <div className="pt-4">
+                            <div className="flex items-center justify-between mb-6">
+                                <h2 className="text-xl font-bold text-gray-900">Guruhlar</h2>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {groups?.map((group: any) => (
+                                    <div key={group.id} className="bg-white rounded-lg shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div>
+                                                <h3 className="font-bold text-lg text-gray-900">{group.name}</h3>
+                                                <p className="text-sm text-gray-500">{group.code}</p>
+                                            </div>
+                                            <div className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                                                {group.student_count} talaba
+                                            </div>
+                                        </div>
+                                        <div className="text-sm text-gray-600">
+                                            <p>{group.faculty || 'Fakultet ko\'rsatilmagan'}</p>
+                                            <p>{group.course}-kurs, {group.semester}-semestr</p>
+                                        </div>
+                                    </div>
+                                ))}
+                                {(!groups || groups.length === 0) && (
+                                    <div className="col-span-full text-center py-8 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                                        Hozircha guruhlar yo'q
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                {/* Right Column (Live Feed) */}
-                <div className="lg:col-span-1">
-                    <div className="sticky top-8">
-                        <LiveFeed />
+                    {/* Right Column (Live Feed) */}
+                    <div className="lg:col-span-1">
+                        <div className="sticky top-8">
+                            <LiveFeed />
+                        </div>
                     </div>
-                </div>
-            </main>
+                </main>
 
-            {/* Schedule Modal */}
-            <ScheduleModal
-                isOpen={isModalOpen}
-                onClose={() => {
-                    setIsModalOpen(false)
-                    setEditingSchedule(null)
-                    setDefaultDayOfWeek(undefined)
-                }}
-                onSave={handleSaveSchedule}
-                schedule={editingSchedule}
-                defaultDayOfWeek={defaultDayOfWeek}
-                defaultEffectiveFrom={weekDates[0]}
-                defaultEffectiveTo={weekDates[6]}
-            />
+                {/* Schedule Modal */}
+                <ScheduleModal
+                    isOpen={isModalOpen}
+                    onClose={() => {
+                        setIsModalOpen(false)
+                        setEditingSchedule(null)
+                        setDefaultDayOfWeek(undefined)
+                    }}
+                    onSave={handleSaveSchedule}
+                    schedule={editingSchedule}
+                    defaultDayOfWeek={defaultDayOfWeek}
+                    defaultEffectiveFrom={weekDates[0]}
+                    defaultEffectiveTo={weekDates[6]}
+                />
 
-            {/* Image Modal */}
-            <ImageModal
-                imageUrl={selectedImage}
-                onClose={() => {
-                    setSelectedImage(null)
-                    setSelectedRecord(null)
-                }}
-                userName={selectedRecord?.user_name}
-                confidence={selectedRecord?.confidence}
-            />
-        </div>
+                {/* Image Modal */}
+                <ImageModal
+                    imageUrl={selectedImage}
+                    onClose={() => {
+                        setSelectedImage(null)
+                        setSelectedRecord(null)
+                    }}
+                    userName={selectedRecord?.user_name}
+                    confidence={selectedRecord?.confidence}
+                />
+            </div>
+        </ProtectedRoute>
     )
 }
 

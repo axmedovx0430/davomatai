@@ -328,5 +328,41 @@ class ScheduleService:
         return query.order_by(Attendance.check_in_time.desc()).all()
 
 
+    @staticmethod
+    def get_user_schedules(db: Session, user_id: int) -> List[Schedule]:
+        """
+        Get all active schedules for groups the user belongs to
+        
+        Args:
+            db: Database session
+            user_id: User ID
+            
+        Returns:
+            List of Schedule objects
+        """
+        from models.group import user_groups
+        
+        # Get group IDs the user belongs to
+        group_ids = db.query(user_groups.c.group_id).filter(user_groups.c.user_id == user_id).all()
+        group_ids = [g[0] for g in group_ids]
+        
+        # Get schedules for these groups OR public schedules
+        from sqlalchemy import or_
+        
+        query = db.query(Schedule).filter(Schedule.is_active == True)
+        
+        if group_ids:
+            query = query.filter(
+                or_(
+                    Schedule.group_id.in_(group_ids),
+                    Schedule.group_id.is_(None)
+                )
+            )
+        else:
+            query = query.filter(Schedule.group_id.is_(None))
+            
+        return query.order_by(Schedule.day_of_week, Schedule.start_time).all()
+
+
 # Global instance
 schedule_service = ScheduleService()

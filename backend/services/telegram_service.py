@@ -14,7 +14,71 @@ from models.attendance import Attendance
 from models.schedule import Schedule
 from sqlalchemy import func, and_
 import asyncio
-from services.telegram_strings import STRINGS
+import os
+
+STRINGS = {
+    "uz": {
+        "welcome_registered": "👋 Xush kelibsiz, <b>{name}</b>!\n\nSiz allaqachon ro'yxatdan o'tgansiz.",
+        "welcome_new": "👋 <b>Xush kelibsiz!</b>\n\nESP32-CAM davomat tizimi botiga xush kelibsiz.\n\nRo'yxatdan o'tish uchun <b>Employee ID</b> ingizni yuboring.\nMasalan: <code>EMP001</code>",
+        "commands_list": "\n\n<b>Mavjud buyruqlar:</b>\n/mystats - Mening statistikam\n/today - Bugungi davomatim\n/week - Haftalik hisobot\n/profile - Profilim\n/schedule - Bugungi jadval\n/notify - Xabarlar sozlamasi\n/language - Tilni o'zgartirish\n/help - Yordam",
+        "open_app": "📱 Ilovani ochish",
+        "reg_success": "✅ <b>Muvaffaqiyatli ro'yxatdan o'tdingiz!</b>\n\n👤 Ism: <b>{name}</b>\n🆔 ID: <code>{id}</code>",
+        "user_not_found": "❌ <b>Foydalanuvchi topilmadi!</b>\n\nEmployee ID: <code>{id}</code> tizimda mavjud emas.\n\nIltimos, to'g'ri ID ni kiriting yoki admin bilan bog'laning.",
+        "error_occurred": "❌ Xatolik yuz berdi. Iltimos, qaytadan urinib ko'ring.",
+        "unknown_cmd": "Tushunarsiz buyruq. Iltimos, /help buyrug'idan foydalaning.",
+        "not_registered": "❌ Siz ro'yxatdan o'tmagansiz. /start buyrug'ini bosing.",
+        "stats_title": "📊 <b>Sizning statistikangiz</b>\n\n📅 <b>{month}</b>\n✅ Kelgan: {present}\n⏰ Kechikkan: {late}\n📈 Davomat: {rate:.1f}%\n\n<b>Umumiy ({year}-yil):</b>\n📊 Jami: {total} ta davomat",
+        "today_title": "📅 <b>Bugungi davomat ({date})</b>\n\n",
+        "no_attendance_today": "📅 <b>Bugungi davomat ({date})</b>\n\nHali davomat yo'q.",
+        "profile_title": "👤 <b>Profil</b>\n\n<b>Ism:</b> {name}\n🆔 <b>ID:</b> <code>{id}</code>\n📱 <b>Telefon:</b> {phone}\n📧 <b>Email:</b> {email}\n👥 <b>Guruh:</b> {groups}\n\n📊 <b>Umumiy statistika:</b>\nDavomat: {rate:.0f}%\nJami: {total}\n✅ Kelgan: {present}\n⏰ Kechikkan: {late}",
+        "notify_on": "🔔 <b>Xabarlar yoqildi</b>\n\nEndi davomat xabarlari olasiz.",
+        "notify_off": "🔕 <b>Xabarlar o'chirildi</b>\n\nDavomat xabarlari kelmaydi.",
+        "lang_select": "🌐 <b>Tilni tanlang / Выберите язык / Select language</b>",
+        "lang_updated": "✅ Til muvaffaqiyatli o'zgartirildi!",
+        "help_text": "ℹ️ <b>Yordam</b>\n\n<b>Mavjud buyruqlar:</b>\n\n/start - Ro'yxatdan o'tish\n/mystats - Mening statistikam\n/today - Bugungi davomatim\n/week - Haftalik hisobot\n/profile - Profilim\n/schedule - Bugungi jadval\n/notify - Xabarlarni yoqish/o'chirish\n/language - Tilni tanlash\n/help - Bu yordam xabari\n\nSavollar uchun admin bilan bog'laning."
+    },
+    "ru": {
+        "welcome_registered": "👋 Добро пожаловать, <b>{name}</b>!\n\nВы уже зарегистрированы.",
+        "welcome_new": "👋 <b>Добро пожаловать!</b>\n\nДобро пожаловать в бот системы посещаемости ESP32-CAM.\n\nДля регистрации отправьте свой <b>Employee ID</b>.\nНапример: <code>EMP001</code>",
+        "commands_list": "\n\n<b>Доступные команды:</b>\n/mystats - Моя статистика\n/today - Моя посещаемость сегодня\n/week - Еженедельный отчет\n/profile - Мой профиль\n/schedule - Расписание на сегодня\n/notify - Настройка уведомлений\n/language - Сменить язык\n/help - Помощь",
+        "open_app": "📱 Открыть приложение",
+        "reg_success": "✅ <b>Вы успешно зарегистрированы!</b>\n\n👤 Имя: <b>{name}</b>\n🆔 ID: <code>{id}</code>",
+        "user_not_found": "❌ <b>Пользователь не найден!</b>\n\nEmployee ID: <code>{id}</code> не существует в системе.\n\nПожалуйста, введите правильный ID или свяжитесь с админом.",
+        "error_occurred": "❌ Произошла ошибка. Пожалуйста, попробуйте еще раз.",
+        "unknown_cmd": "Непонятная команда. Пожалуйста, используйте /help.",
+        "not_registered": "❌ Вы не зарегистрированы. Нажмите /start.",
+        "stats_title": "📊 <b>Ваша статистика</b>\n\n📅 <b>{month}</b>\n✅ Пришел: {present}\n⏰ Опоздал: {late}\n📈 Посещаемость: {rate:.1f}%\n\n<b>Общая ({year} год):</b>\n📊 Всего: {total} посещений",
+        "today_title": "📅 <b>Посещаемость сегодня ({date})</b>\n\n",
+        "no_attendance_today": "📅 <b>Посещаемость сегодня ({date})</b>\n\nПосещений пока нет.",
+        "profile_title": "👤 <b>Профиль</b>\n\n<b>Имя:</b> {name}\n🆔 <b>ID:</b> <code>{id}</code>\n📱 <b>Телефон:</b> {phone}\n📧 <b>Email:</b> {email}\n👥 <b>Группа:</b> {groups}\n\n📊 <b>Общая статистика:</b>\nПосещаемость: {rate:.0f}%\nВсего: {total}\n✅ Пришел: {present}\n⏰ Опоздал: {late}",
+        "notify_on": "🔔 <b>Уведомления включены</b>\n\nТеперь вы будете получать сообщения о посещаемости.",
+        "notify_off": "🔕 <b>Уведомления выключены</b>\n\nСообщения о посещаемости приходить не будут.",
+        "lang_select": "🌐 <b>Выберите язык / Tanlang tilni / Select language</b>",
+        "lang_updated": "✅ Язык успешно изменен!",
+        "help_text": "ℹ️ <b>Помощь</b>\n\n<b>Доступные команды:</b>\n\n/start - Регистрация\n/mystats - Моя статистика\n/today - Посещаемость сегодня\n/week - Еженедельный отчет\n/profile - Профиль\n/schedule - Расписание\n/notify - Вкл/выкл уведомления\n/language - Выбор языка\n/help - Это сообщение помощи\n\nПо вопросам обращайтесь к админу."
+    },
+    "en": {
+        "welcome_registered": "👋 Welcome, <b>{name}</b>!\n\nYou are already registered.",
+        "welcome_new": "👋 <b>Welcome!</b>\n\nWelcome to the ESP32-CAM attendance system bot.\n\nTo register, please send your <b>Employee ID</b>.\nExample: <code>EMP001</code>",
+        "commands_list": "\n\n<b>Available commands:</b>\n/mystats - My statistics\n/today - Today's attendance\n/week - Weekly report\n/profile - My profile\n/schedule - Today's schedule\n/notify - Notification settings\n/language - Change language\n/help - Help",
+        "open_app": "📱 Open App",
+        "reg_success": "✅ <b>Successfully registered!</b>\n\n👤 Name: <b>{name}</b>\n🆔 ID: <code>{id}</code>",
+        "user_not_found": "❌ <b>User not found!</b>\n\nEmployee ID: <code>{id}</code> does not exist in the system.\n\nPlease enter the correct ID or contact the admin.",
+        "error_occurred": "❌ An error occurred. Please try again.",
+        "unknown_cmd": "Unknown command. Please use /help.",
+        "not_registered": "❌ You are not registered. Please press /start.",
+        "stats_title": "📊 <b>Your Statistics</b>\n\n📅 <b>{month}</b>\n✅ Present: {present}\n⏰ Late: {late}\n📈 Rate: {rate:.1f}%\n\n<b>Total ({year}):</b>\n📊 Total: {total} attendances",
+        "today_title": "📅 <b>Today's Attendance ({date})</b>\n\n",
+        "no_attendance_today": "📅 <b>Today's Attendance ({date})</b>\n\nNo attendance records yet.",
+        "profile_title": "👤 <b>Profile</b>\n\n<b>Name:</b> {name}\n🆔 <b>ID:</b> <code>{id}</code>\n📱 <b>Phone:</b> {phone}\n📧 <b>Email:</b> {email}\n👥 <b>Group:</b> {groups}\n\n📊 <b>Overall Statistics:</b>\nRate: {rate:.0f}%\nTotal: {total}\n✅ Present: {present}\n⏰ Late: {late}",
+        "notify_on": "🔔 <b>Notifications enabled</b>\n\nYou will now receive attendance messages.",
+        "notify_off": "🔕 <b>Notifications disabled</b>\n\nYou will no longer receive attendance messages.",
+        "lang_select": "🌐 <b>Select language / Tanlang tilni / Выберите язык</b>",
+        "lang_updated": "✅ Language successfully updated!",
+        "help_text": "ℹ️ <b>Help</b>\n\n<b>Available commands:</b>\n\n/start - Registration\n/mystats - My statistics\n/today - Today's attendance\n/week - Weekly report\n/profile - Profile\n/schedule - Schedule\n/notify - Toggle notifications\n/language - Select language\n/help - This help message\n\nFor questions, contact the admin."
+    }
+}
+
 
 logger = logging.getLogger(__name__)
 logger.info("VERSION: 2.0.2 - STABLE - TELEGRAM")
@@ -112,7 +176,9 @@ class TelegramService:
     
     def get_text(self, user: Optional[User], key: str, **kwargs) -> str:
         """Get localized text for user"""
-        lang = user.language if user and user.language in STRINGS else "uz"
+        # Use getattr to safely handle missing language attribute
+        user_lang = getattr(user, 'language', 'uz') if user else 'uz'
+        lang = user_lang if user_lang in STRINGS else "uz"
         text = STRINGS[lang].get(key, STRINGS["uz"].get(key, key))
         return text.format(**kwargs) if kwargs else text
     
@@ -318,10 +384,67 @@ API Base: <code>{settings.TELEGRAM_API_BASE_URL}</code>"""
     
     async def cmd_week(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /week command - Weekly report"""
-        await update.message.reply_text(
-            "📅 Haftalik hisobot funksiyasi tez orada qo'shiladi...",
-            parse_mode="HTML"
-        )
+        chat_id = str(update.effective_chat.id)
+        db = SessionLocal()
+        try:
+            db_user = db.query(User).filter(User.telegram_chat_id == chat_id).first()
+            if not db_user:
+                await update.message.reply_text(
+                    "❌ Siz ro'yxatdan o'tmagansiz. /start buyrug'ini bosing.",
+                    parse_mode="HTML"
+                )
+                return
+
+            # Get this week's date range
+            today = datetime.now()
+            week_start = today - timedelta(days=today.weekday())
+            week_start = week_start.replace(hour=0, minute=0, second=0, microsecond=0)
+            week_end = week_start + timedelta(days=7)
+            
+            attendances = db.query(Attendance).filter(
+                and_(
+                    Attendance.user_id == db_user.id,
+                    Attendance.check_in_time >= week_start,
+                    Attendance.check_in_time < week_end
+                )
+            ).order_by(Attendance.check_in_time).all()
+            
+            if attendances:
+                present = sum(1 for a in attendances if a.status == "present")
+                late = sum(1 for a in attendances if a.status == "late")
+                total = len(attendances)
+                rate = (present / total * 100) if total > 0 else 0
+                
+                message = f"📅 <b>Haftalik hisobot</b>\n\n"
+                message += f"📊 Jami: {total}\n"
+                message += f"✅ Kelgan: {present}\n"
+                message += f"⏰ Kechikkan: {late}\n"
+                message += f"📈 Davomat: {rate:.1f}%\n\n"
+                
+                # Group by day
+                from collections import defaultdict
+                by_day = defaultdict(list)
+                for att in attendances:
+                    day_key = att.check_in_time.strftime('%A, %d %B')
+                    by_day[day_key].append(att)
+                
+                for day, day_atts in by_day.items():
+                    message += f"\n<b>{day}</b>\n"
+                    for att in day_atts:
+                        status_emoji = "✅" if att.status == "present" else "⏰"
+                        time_str = att.check_in_time.strftime("%H:%M")
+                        schedule_name = att.schedule.name if att.schedule else "Noma'lum"
+                        message += f"  {status_emoji} {time_str} - {schedule_name}\n"
+            else:
+                message = "📅 <b>Haftalik hisobot</b>\n\nBu hafta davomat yo'q."
+            
+        except Exception as e:
+            logger.error(f"Week error: {e}")
+            message = self.get_text(None, "error_occurred")
+        finally:
+            db.close()
+        
+        await update.message.reply_text(message, parse_mode="HTML")
     
     async def cmd_profile(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /profile command - User profile"""
@@ -347,6 +470,7 @@ API Base: <code>{settings.TELEGRAM_API_BASE_URL}</code>"""
             
             attendance_rate = (present_count / total_attendance * 100) if total_attendance > 0 else 0
             
+            phone = db_user.phone or "Yo'q"
             email = db_user.email or "Yo'q"
             groups_str = ", ".join([g.name for g in db_user.groups]) if db_user.groups else "Yo'q"
             
@@ -372,10 +496,52 @@ API Base: <code>{settings.TELEGRAM_API_BASE_URL}</code>"""
     
     async def cmd_schedule(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /schedule command - Today's schedule"""
-        await update.message.reply_text(
-            "📅 Jadval funksiyasi tez orada qo'shiladi...",
-            parse_mode="HTML"
-        )
+        chat_id = str(update.effective_chat.id)
+        db = SessionLocal()
+        try:
+            db_user = db.query(User).filter(User.telegram_chat_id == chat_id).first()
+            if not db_user:
+                await update.message.reply_text(
+                    "❌ Siz ro'yxatdan o'tmagansiz. /start buyrug'ini bosing.",
+                    parse_mode="HTML"
+                )
+                return
+
+            # Get user's groups
+            user_group_ids = [g.id for g in db_user.groups] if db_user.groups else []
+            
+            # Get today's day of week (0=Monday)
+            today_dow = datetime.now().weekday()
+            
+            # Get schedules for today
+            schedules = db.query(Schedule).filter(
+                and_(
+                    Schedule.day_of_week == today_dow,
+                    Schedule.is_active == True,
+                    (Schedule.group_id.in_(user_group_ids)) | (Schedule.group_id == None)
+                )
+            ).order_by(Schedule.start_time).all()
+            
+            if schedules:
+                message = f"📅 <b>Bugungi jadval</b>\n\n"
+                for schedule in schedules:
+                    message += f"📚 <b>{schedule.name}</b>\n"
+                    message += f"🕐 {schedule.start_time.strftime('%H:%M')} - {schedule.end_time.strftime('%H:%M')}\n"
+                    if schedule.teacher:
+                        message += f"👨‍🏫 {schedule.teacher}\n"
+                    if schedule.room:
+                        message += f"🚪 {schedule.room}\n"
+                    message += "\n"
+            else:
+                message = "📅 <b>Bugungi jadval</b>\n\nBugun dars yo'q."
+            
+        except Exception as e:
+            logger.error(f"Schedule error: {e}")
+            message = self.get_text(None, "error_occurred")
+        finally:
+            db.close()
+        
+        await update.message.reply_text(message, parse_mode="HTML")
     
     async def cmd_notify(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /notify command - Toggle notifications"""
@@ -476,7 +642,7 @@ API Base: <code>{settings.TELEGRAM_API_BASE_URL}</code>"""
             finally:
                 db.close()
     
-    async def notify_attendance(self, user_name: str, employee_id: str, check_in_time: str, confidence: float, status: str):
+    async def notify_attendance(self, user_name: str, employee_id: str, check_in_time: str, confidence: float, status: str, image_path: str = None):
         """Send attendance notification to admin chats"""
         try:
             status_emoji = "✅" if status == "present" else "⏰"
@@ -490,12 +656,28 @@ API Base: <code>{settings.TELEGRAM_API_BASE_URL}</code>"""
 📍 {status_text}
 🎯 Ishonch: {confidence:.1f}%"""
             
-            await self.send_to_admins(message)
+            # Send photo with caption if image exists
+            if image_path and os.path.exists(image_path):
+                for chat_id in settings.admin_chat_ids:
+                    try:
+                        with open(image_path, 'rb') as photo:
+                            await self.bot.send_photo(
+                                chat_id=chat_id,
+                                photo=photo,
+                                caption=message,
+                                parse_mode="HTML"
+                            )
+                    except Exception as e:
+                        logger.error(f"Failed to send photo to admin {chat_id}: {e}")
+                        # Fallback to text message
+                        await self.send_message(chat_id, message)
+            else:
+                await self.send_to_admins(message)
             
         except Exception as e:
             logger.error(f"Admin notification error: {e}")
     
-    async def notify_user_attendance(self, user_id: int, schedule_name: str, check_in_time: str, status: str, late_minutes: int = 0):
+    async def notify_user_attendance(self, user_id: int, schedule_name: str, check_in_time: str, status: str, late_minutes: int = 0, image_path: str = None):
         """Send personal attendance notification to user"""
         db = SessionLocal()
         try:
@@ -529,7 +711,23 @@ API Base: <code>{settings.TELEGRAM_API_BASE_URL}</code>"""
 
 Bugun: {today_count} ta davomat"""
             
-            await self.send_message(int(user.telegram_chat_id), message)
+            # Send photo with caption if image exists
+            chat_id = int(user.telegram_chat_id)
+            if image_path and os.path.exists(image_path):
+                try:
+                    with open(image_path, 'rb') as photo:
+                        await self.bot.send_photo(
+                            chat_id=chat_id,
+                            photo=photo,
+                            caption=message,
+                            parse_mode="HTML"
+                        )
+                except Exception as e:
+                    logger.error(f"Failed to send photo to user {user_id}: {e}")
+                    # Fallback to text message
+                    await self.send_message(chat_id, message)
+            else:
+                await self.send_message(chat_id, message)
             
         except Exception as e:
             logger.error(f"User notification error: {e}")

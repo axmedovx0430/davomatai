@@ -4,6 +4,11 @@ Configuration settings for the application
 from pydantic_settings import BaseSettings
 from typing import List, Optional
 import os
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
@@ -13,6 +18,7 @@ class Settings(BaseSettings):
     # Security
     SECRET_KEY: str = "insecure-default-key-for-dev"
     API_KEY_SALT: str = "default-salt"
+    DEFAULT_DEVICE_API_KEY: str = "kHBjHqVEi44yDZtPaDpSIkP8qwcrlMOGv4HxzKMuedw"
     
     # Telegram
     TELEGRAM_BOT_TOKEN: str = ""
@@ -45,18 +51,22 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:3000"
     
     # Hugging Face / Webhook
-    SPACE_ID: Optional[str] = None
+    SPACE_ID: Optional[str] = "axmedx070/davomatai-backend"
     WEBHOOK_URL: Optional[str] = None
     
     @property
     def frontend_url(self) -> str:
         """Get the public frontend URL, auto-detecting Hugging Face if needed"""
-        if self.FRONTEND_URL and "localhost" not in self.FRONTEND_URL:
-            return self.FRONTEND_URL
+        # Prioritize SPACE_ID to get the public .hf.space URL
         if self.SPACE_ID:
             # username/space-name -> username-space-name.hf.space
             host = self.SPACE_ID.replace("/", "-").lower()
             return f"https://{host}.hf.space"
+        
+        # Fallback to FRONTEND_URL if it's not localhost
+        if self.FRONTEND_URL and "localhost" not in self.FRONTEND_URL:
+            return self.FRONTEND_URL
+            
         return self.FRONTEND_URL
 
     @property
@@ -64,7 +74,7 @@ class Settings(BaseSettings):
         """Construct webhook URL from SPACE_ID if not explicitly set"""
         if self.WEBHOOK_URL:
             return self.WEBHOOK_URL
-        if self.SPACE_ID:
+        if self.SPACE_ID or (self.FRONTEND_URL and "localhost" not in self.FRONTEND_URL):
             return f"{self.frontend_url}/api/telegram/webhook"
         return None
     
@@ -86,8 +96,8 @@ class Settings(BaseSettings):
 
 # Create settings instance
 settings = Settings()
-print(f"DEBUG: Settings initialized. Attributes: {[a for a in dir(settings) if not a.startswith('_')]}")
-logger.info(f"DEBUG: Settings initialized. Attributes: {[a for a in dir(settings) if not a.startswith('_')]}")
+logger.info(f"DEBUG: Settings initialized. Frontend URL: {settings.frontend_url}")
+logger.info(f"DEBUG: Webhook URL: {settings.telegram_webhook_url}")
 
 # Create upload directory if it doesn't exist
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)

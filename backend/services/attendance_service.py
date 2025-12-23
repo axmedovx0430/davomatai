@@ -568,24 +568,121 @@ class AttendanceService:
         Returns:
             Dictionary with statistics
         """
-        start_date = get_current_time() - timedelta(days=days)
+        from models.schedule import Schedule
+        from models.group import user_groups
+        from sqlalchemy import and_, or_
         
+        end_date = get_current_time()
+        start_date = end_date - timedelta(days=days)
+        
+        # Get user's groups to know which schedules apply
+        user_group_ids = [g[0] for g in db.query(user_groups.c.group_id).filter(user_groups.c.user_id == user_id).all()]
+        
+        # Get all attendance records in range
         records = db.query(Attendance).filter(
             Attendance.user_id == user_id,
-            Attendance.check_in_time >= start_date
+            Attendance.check_in_time >= start_date,
+            Attendance.check_in_time <= end_date
         ).all()
         
-        total_days = days
         present_count = len([r for r in records if r.status == "present"])
         late_count = len([r for r in records if r.status == "late"])
-        absent_count = total_days - len(records)
+        
+        # Calculate expected attendance (days with active schedules)
+        expected_attendance_count = 0
+        
+        # Iterate through each day in the past 'days'
+        current_check_date = start_date.date()
+        end_check_date = end_date.date()
+        now = datetime.now()
+        
+        while current_check_date <= end_check_date:
+            day_of_week = current_check_date.weekday()
+            
+            # Get active schedules for this day
+            # We reuse the logic from get_active_schedule_at_time but simplified for stats
+            check_dt_start = datetime.combine(current_check_date, datetime.min.time())
+            check_dt_end = datetime.combine(current_check_date, datetime.max.time())
+            
+            day_schedules = db.query(Schedule).filter(
+                and_(
+                    Schedule.is_active == True,
+                    Schedule.day_of_week == day_of_week,
+                    or_(Schedule.effective_from.is_(None), Schedule.effective_from <= check_dt_end),
+                    or_(Schedule.effective_to.is_(None), Schedule.effective_to >= check_dt_start),
+                    or_(
+                        Schedule.group_id.in_(user_group_ids) if user_group_ids else Schedule.group_id.is_(None),
+                        Schedule.group_id.is_(None)
+                    )
+                )
+            ).all()
+            
+            for schedule in day_schedules:
+                # Check if this specific class time has passed
+                schedule_end_dt = datetime.combine(current_check_date, schedule.end_time)
+                
+                # If class is in the future, skip
+                if schedule_end_dt > now:
+                    continue
+                    
+                # Check if user attended THIS schedule
+                # We check if any record exists for this schedule_id on this date
+                # OR if any record exists within the time window (fallback)
+                
+                attended = False
+                
+                # 1. Check by schedule_id (most reliable)
+                attended_by_id = any(
+                    r.schedule_id == schedule.id and r.check_in_time.date() == current_check_date 
+                    for r in records
+                )
+                
+                if attended_by_id:
+                    attended = True
+                else:
+                    # 2. Fallback: Check by time overlap
+                    # If a record exists within start-30min and end time
+                    earliest = datetime.combine(current_check_date, schedule.start_time) - timedelta(minutes=30)
+                    latest = datetime.combine(current_check_date, schedule.end_time)
+                    
+                    attended_by_time = False
+                    for r in records:
+                        # Handle timezone awareness for comparison
+                        r_time = r.check_in_time
+                        local_earliest = earliest
+                        local_latest = latest
+                        
+                        if r_time.tzinfo is not None:
+                            if local_earliest.tzinfo is None:
+                                local_earliest = local_earliest.replace(tzinfo=r_time.tzinfo)
+                            if local_latest.tzinfo is None:
+                                local_latest = local_latest.replace(tzinfo=r_time.tzinfo)
+                        
+                        if local_earliest <= r_time <= local_latest:
+                            attended_by_time = True
+                            break
+                    if attended_by_time:
+                        attended = True
+                
+                if not attended:
+                    expected_attendance_count += 1
+            
+            current_check_date += timedelta(days=1)
+            
+        absent_count = expected_attendance_count
+        
+        # Total "opportunities" is present + late + absent
+        # Note: present + late are counts of RECORDS.
+        # absent is count of MISSED SCHEDULES.
+        # This is correct for the rate calculation: (Attended Classes) / (Total Classes)
+        total_opportunities = present_count + late_count + absent_count
         
         return {
-            "total_days": total_days,
+            "total_days": days, # Requested period
             "present": present_count,
             "late": late_count,
             "absent": absent_count,
-            "attendance_rate": round((len(records) / total_days) * 100, 2) if total_days > 0 else 0
+            "attendance_rate": round(((present_count + late_count) / total_opportunities) * 100, 2) if total_opportunities > 0 else 0
         }
 
 

@@ -38,9 +38,10 @@ app.add_middleware(
 )
 
 # Import routes
-from routes import face_routes, user_routes, attendance_routes, device_routes, group_routes, time_settings_routes, schedule_routes
+from routes import face_routes, user_routes, attendance_routes, device_routes, group_routes, time_settings_routes, schedule_routes, auth_routes
 
 # Register routers
+app.include_router(auth_routes.router)
 app.include_router(face_routes.router)
 app.include_router(user_routes.router)
 app.include_router(attendance_routes.router)
@@ -61,6 +62,15 @@ async def startup_event():
     
     # Initialize database
     try:
+        # Run migrations first
+        from database import engine
+        from utils.migrations import migrate_users_table, migrate_schedules_table
+        
+        logger.info("Running database migrations...")
+        migrate_users_table(engine)
+        migrate_schedules_table(engine)
+        logger.info("Database migrations completed")
+
         init_db()
         logger.info("Database initialized successfully")
     except Exception as e:

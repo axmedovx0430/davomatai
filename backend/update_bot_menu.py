@@ -5,7 +5,7 @@ import logging
 
 # Configuration
 BOT_TOKEN = "8296672835:AAEKDyvLzBPAgBotc9prA9VGxZYh8d7pesk"
-WEB_APP_URL = "https://b178433ada461d.lhr.life"
+WEB_APP_URL = "https://axmedx070-davomatai-backend.hf.space/mobile"
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

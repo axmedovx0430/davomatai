@@ -153,7 +153,8 @@ async def upload_face_for_recognition(
             employee_id=user.employee_id,
             check_in_time=check_in_time_str,
             confidence=confidence * 100,
-            status=attendance.status
+            status=attendance.status,
+            image_path=image_path
         )
         
         # Personal user notification (new)
@@ -164,7 +165,8 @@ async def upload_face_for_recognition(
             schedule_name=schedule_name,
             check_in_time=attendance.check_in_time.strftime("%H:%M:%S"),
             status=attendance.status,
-            late_minutes=late_minutes
+            late_minutes=late_minutes,
+            image_path=image_path
         )
         
         logger.info(f"Attendance recorded for {user.full_name}")

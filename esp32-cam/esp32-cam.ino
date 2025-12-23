@@ -220,28 +220,32 @@ int sendImageToServer(camera_fb_t * fb) {
     static const char* boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW";
     const char* bodyStartPart2 = "\r\nContent-Disposition: form-data; name=\"file\"; filename=\"face.jpg\"\r\nContent-Type: image/jpeg\r\n\r\n";
     
-    // ... (Simplified for brevity, assuming same logic as before)
-    // Re-using the robust upload logic from previous step
-    
     esp_http_client_config_t config = {};
     config.url = API_ENDPOINT;
     config.method = HTTP_METHOD_POST;
     config.event_handler = http_event_handler;
-    config.timeout_ms = 20000;
+    config.timeout_ms = 30000; // Increased timeout for online upload
     config.buffer_size = 1024;
+    config.skip_cert_common_name_check = true; // Skip SSL verification for HF
     
     esp_http_client_handle_t client = esp_http_client_init(&config);
-    if (!client) return -1;
+    if (!client) {
+        Serial.println("❌ Failed to initialize HTTP client");
+        return -1;
+    }
     
     char contentTypeHeader[100];
     snprintf(contentTypeHeader, sizeof(contentTypeHeader), "multipart/form-data; boundary=%s", boundary);
     esp_http_client_set_header(client, "Content-Type", contentTypeHeader);
     esp_http_client_set_header(client, "X-API-Key", API_KEY);
+    esp_http_client_set_header(client, "User-Agent", "ESP32-CAM-Attendance/2.0");
     
     // Calculate total length
     int totalLen = 2 + strlen(boundary) + strlen(bodyStartPart2) + fb->len + 2 + 2 + strlen(boundary) + 4;
     
-    if (esp_http_client_open(client, totalLen) != ESP_OK) {
+    esp_err_t err = esp_http_client_open(client, totalLen);
+    if (err != ESP_OK) {
+        Serial.printf("❌ Failed to open connection: %s\n", esp_err_to_name(err));
         esp_http_client_cleanup(client);
         return -1;
     }
@@ -250,7 +254,7 @@ int sendImageToServer(camera_fb_t * fb) {
     esp_http_client_write(client, boundary, strlen(boundary));
     esp_http_client_write(client, bodyStartPart2, strlen(bodyStartPart2));
     
-    const int chunkSize = 512;
+    const int chunkSize = 1024; // Increased chunk size
     for (int i = 0; i < fb->len; i += chunkSize) {
         int writeLen = min(chunkSize, (int)(fb->len - i));
         esp_http_client_write(client, (const char*)(fb->buf + i), writeLen);
@@ -260,14 +264,28 @@ int sendImageToServer(camera_fb_t * fb) {
     esp_http_client_write(client, boundary, strlen(boundary));
     esp_http_client_write(client, "--\r\n", 4);
     
-    int statusCode = esp_http_client_get_status_code(client);
     // Trigger read to parse response
-    char buffer[100];
-    esp_http_client_read(client, buffer, sizeof(buffer));
+    esp_err_t fetch_err = esp_http_client_fetch_headers(client);
+    int statusCode = esp_http_client_get_status_code(client);
+    
+    if (fetch_err != ESP_OK) {
+        Serial.printf("❌ HTTP Fetch failed: %s\n", esp_err_to_name(fetch_err));
+    } else {
+        Serial.printf("📡 Server Response: %d\n", statusCode);
+        
+        char buffer[256];
+        int read_len = esp_http_client_read(client, buffer, sizeof(buffer) - 1);
+        if (read_len > 0) {
+            buffer[read_len] = 0;
+            // Serial.println(buffer); // Debug response body
+        }
+    }
     
     int result = -1;
     if (statusCode == 200) {
         result = recognizedFlag ? 1 : 0;
+    } else {
+        Serial.printf("⚠️ Upload failed with status: %d\n", statusCode);
     }
     
     esp_http_client_cleanup(client);
@@ -298,8 +316,18 @@ void checkServerConnection() {
     healthUrl.replace("/api/face/upload", "/health");
     config.url = healthUrl.c_str();
     config.method = HTTP_METHOD_GET;
+    config.skip_cert_common_name_check = true;
+    config.timeout_ms = 10000;
+    
     esp_http_client_handle_t client = esp_http_client_init(&config);
-    esp_http_client_perform(client);
+    esp_err_t err = esp_http_client_perform(client);
+    
+    if (err == ESP_OK) {
+        int statusCode = esp_http_client_get_status_code(client);
+        Serial.printf("📡 Backend Health Check: %d\n", statusCode);
+    } else {
+        Serial.printf("❌ Backend unreachable: %s\n", esp_err_to_name(err));
+    }
     esp_http_client_cleanup(client);
 }
 

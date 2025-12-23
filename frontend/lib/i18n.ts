@@ -25,7 +25,22 @@ export const translations = {
         unknown_lesson: "Noma'lum dars",
         attendance_history: "Davomat tarixi",
         select_date: "Sanani tanlang",
-        save: "Saqlash"
+        save: "Saqlash",
+        login: "Kirish",
+        enter_employee_id: "Employee ID ni kiriting",
+        logout: "Chiqish",
+        weekly_schedule: "Haftalik dars jadvali",
+        mon: "Du",
+        tue: "Se",
+        wed: "Ch",
+        thu: "Pa",
+        fri: "Ju",
+        sat: "Sha",
+        sun: "Yak",
+        profile: "Profil",
+        course: "Kurs",
+        major: "Yo'nalish",
+        faculty: "Fakultet"
     },
     ru: {
         welcome: "Добро пожаловать",
@@ -51,7 +66,22 @@ export const translations = {
         unknown_lesson: "Неизвестный урок",
         attendance_history: "История посещаемости",
         select_date: "Выберите дату",
-        save: "Сохранить"
+        save: "Сохранить",
+        login: "Войти",
+        enter_employee_id: "Введите Employee ID",
+        logout: "Выйти",
+        weekly_schedule: "Еженедельное расписание",
+        mon: "Пн",
+        tue: "Вт",
+        wed: "Ср",
+        thu: "Чт",
+        fri: "Пт",
+        sat: "Сб",
+        sun: "Вс",
+        profile: "Профиль",
+        course: "Курс",
+        major: "Направление",
+        faculty: "Факультет"
     },
     en: {
         welcome: "Welcome",
@@ -77,7 +107,22 @@ export const translations = {
         unknown_lesson: "Unknown lesson",
         attendance_history: "Attendance History",
         select_date: "Select date",
-        save: "Save"
+        save: "Save",
+        login: "Login",
+        enter_employee_id: "Enter Employee ID",
+        logout: "Logout",
+        weekly_schedule: "Weekly Schedule",
+        mon: "Mon",
+        tue: "Tue",
+        wed: "Wed",
+        thu: "Thu",
+        fri: "Fri",
+        sat: "Sat",
+        sun: "Sun",
+        profile: "Profile",
+        course: "Course",
+        major: "Major",
+        faculty: "Faculty"
     }
 };
 

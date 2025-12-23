@@ -8,11 +8,11 @@
 #define CONFIG_H
 
 // WiFi credentials
-#define WIFI_SSID "laptop lenevo"
-#define WIFI_PASSWORD "11111111"
+#define WIFI_SSID "vivo1915"
+#define WIFI_PASSWORD "55555555"
 
 // Backend API configuration
-#define API_ENDPOINT "http://192.168.137.1:8080/api/face/upload"
+#define API_ENDPOINT "https://axmedx070-davomatai-backend.hf.space/api/face/upload"
 #define API_KEY "kHBjHqVEi44yDZtPaDpSIkP8qwcrlMOGv4HxzKMuedw"
 
 // Camera settings
